@@ -1,0 +1,52 @@
+{
+  "version": "1.0.0",
+  "created_at": "2026-03-13",
+  "system": "Cloud Code Team",
+  "benchmarks": {
+    "infrastructure": {
+      "dify_api": {"status": "healthy", "response_time_ms": null},
+      "neo4j": {"status": "healthy", "nodes": 4, "relationships": 3},
+      "hipporag": {"status": "healthy", "connected_to_neo4j": true},
+      "orchestrator": {"status": "healthy", "agents_configured": 10},
+      "memory_agent": {"status": "healthy", "mem0_connected": true},
+      "rag_app": {"status": "healthy", "kb_connected": true},
+      "redis": {"status": "healthy"},
+      "qdrant": {"status": "healthy"},
+      "caddy": {"status": "healthy", "ssl": true, "hsts": true}
+    },
+    "security": {
+      "firewall_layers": 3,
+      "ssh_key_only": true,
+      "fail2ban_active": true,
+      "docker_log_rotation": true,
+      "ports_localhost_only": ["3080", "6333", "6379", "5432", "7474", "7687", "8000", "8001"],
+      "caddy_security_headers": ["HSTS", "X-Frame-Options", "X-Content-Type-Options"],
+      "trivy_scan": {"high": 3, "critical": 1, "note": "upstream Go deps, not actionable"}
+    },
+    "agents": {
+      "architect": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "coder": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "tester": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "reviewer": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "devops": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "docs": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "security": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "planner": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "debug": {"status": "active", "model": "gpt-4o-mini", "tested": true},
+      "worker": {"status": "active", "model": "gpt-4o-mini", "tested": true}
+    },
+    "anti_hallucination": {
+      "kb_enforcement": true,
+      "score_threshold": 0.7,
+      "query_rewrite": true,
+      "citations": true,
+      "fallback_message": "Keine Informationen in meiner Wissensbasis"
+    },
+    "backup": {
+      "cron": "0 3 * * *",
+      "targets": ["dify_db", "neo4j", "recall_memory", "dify_env", "services"],
+      "retention_days": 7,
+      "verification": true
+    }
+  }
+}

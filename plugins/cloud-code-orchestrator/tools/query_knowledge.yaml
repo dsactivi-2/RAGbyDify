@@ -1,0 +1,34 @@
+identity:
+  name: query_knowledge
+  author: cloud-code-team
+  label:
+    en_US: Query Knowledge Graph
+    de_DE: Knowledge Graph abfragen
+description:
+  human:
+    en_US: Search the Cloud Code knowledge graph (HippoRAG) for entities and relationships
+    de_DE: Durchsuche den Cloud Code Knowledge Graph nach Entitäten und Beziehungen
+  llm: Query the HippoRAG knowledge graph to find information about system components, their relationships, and technical details. Returns entities and their connections.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Search Query
+    human_description:
+      en_US: What to search for in the knowledge graph
+    llm_description: Search term to find entities and relationships in the knowledge graph
+    form: llm
+  - name: hop_depth
+    type: number
+    required: false
+    default: 2
+    label:
+      en_US: Hop Depth
+    human_description:
+      en_US: How many relationship hops to follow (1-3)
+    llm_description: Number of relationship hops to traverse (1-3)
+    form: form
+extra:
+  python:
+    source: tools/query_knowledge.py

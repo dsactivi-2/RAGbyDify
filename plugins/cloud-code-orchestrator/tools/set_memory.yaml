@@ -1,0 +1,58 @@
+identity:
+  name: set_memory
+  author: cloud-code-team
+  label:
+    en_US: Set Memory
+    de_DE: Erinnerung speichern
+description:
+  human:
+    en_US: Store a value in Core Memory (system variable or agent memory)
+    de_DE: Einen Wert im Core Memory speichern
+  llm: Store information in the Core Memory system for persistence across sessions. Can set system-wide variables or agent-specific memories.
+parameters:
+  - name: scope
+    type: select
+    required: true
+    label:
+      en_US: Scope
+    options:
+      - value: system
+        label:
+          en_US: System Variable
+      - value: agent
+        label:
+          en_US: Agent Memory
+    human_description:
+      en_US: Where to store the value
+    llm_description: "Where to store: 'system' for system-wide, 'agent' for agent-specific"
+    form: llm
+  - name: key
+    type: string
+    required: true
+    label:
+      en_US: Key
+    human_description:
+      en_US: The key to store the value under
+    llm_description: Key name for the stored value
+    form: llm
+  - name: value
+    type: string
+    required: true
+    label:
+      en_US: Value
+    human_description:
+      en_US: The value to store
+    llm_description: Value to store in memory
+    form: llm
+  - name: agent_name
+    type: string
+    required: false
+    label:
+      en_US: Agent Name
+    human_description:
+      en_US: Agent name (only for agent scope)
+    llm_description: Agent name when scope is 'agent'
+    form: llm
+extra:
+  python:
+    source: tools/set_memory.py

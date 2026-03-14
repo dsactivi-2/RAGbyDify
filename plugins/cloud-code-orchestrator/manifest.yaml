@@ -1,0 +1,38 @@
+version: 0.0.1
+type: plugin
+author: cloud-code-team
+name: cloud-code-orchestrator
+label:
+  en_US: Cloud Code Orchestrator
+  de_DE: Cloud Code Orchestrator
+description:
+  en_US: Multi-Agent orchestration tool for the Cloud Code Team system.
+  de_DE: Multi-Agent Orchestrierungs-Tool fuer das Cloud Code Team System.
+icon: icon.svg
+tags:
+  - utilities
+  - business
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+    model:
+      enabled: true
+      llm: true
+      text_embedding: false
+plugins:
+  tools:
+    - provider/cloud_code.yaml
+  models: []
+  endpoints: []
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: '3.12'
+    entrypoint: main
+created_at: '2026-03-13T00:00:00.000Z'

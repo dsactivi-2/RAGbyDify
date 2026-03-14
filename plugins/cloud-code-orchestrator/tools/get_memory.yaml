@@ -1,0 +1,49 @@
+identity:
+  name: get_memory
+  author: cloud-code-team
+  label:
+    en_US: Get Memory
+    de_DE: Erinnerung abrufen
+description:
+  human:
+    en_US: Retrieve system variables or agent memory from Core Memory
+    de_DE: Systemvariablen oder Agent-Erinnerungen aus dem Core Memory abrufen
+  llm: Retrieve stored information from the Core Memory system. Can get system-wide variables or agent-specific memories.
+parameters:
+  - name: scope
+    type: select
+    required: true
+    label:
+      en_US: Scope
+    options:
+      - value: system
+        label:
+          en_US: System Variables
+      - value: agent
+        label:
+          en_US: Agent Memory
+    human_description:
+      en_US: Whether to query system variables or agent-specific memory
+    llm_description: "Scope of memory query: 'system' for system-wide variables, 'agent' for agent-specific memory"
+    form: llm
+  - name: key
+    type: string
+    required: false
+    label:
+      en_US: Key
+    human_description:
+      en_US: Specific key to retrieve (leave empty for all)
+    llm_description: Specific key to retrieve. Leave empty to get all entries in scope.
+    form: llm
+  - name: agent_name
+    type: string
+    required: false
+    label:
+      en_US: Agent Name
+    human_description:
+      en_US: Agent name (only for agent scope)
+    llm_description: Agent name when scope is 'agent'
+    form: llm
+extra:
+  python:
+    source: tools/get_memory.py

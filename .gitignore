@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Databases
+*.db
+
+# Environment
+.env
+*.env
+
+# Backups
+backups/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Data directory (runtime data)
+data/
+
+# Neo4j data
+neo4j/data/
+neo4j/logs/
+*.bak*

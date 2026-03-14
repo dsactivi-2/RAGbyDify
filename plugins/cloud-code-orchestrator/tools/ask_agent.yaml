@@ -1,0 +1,43 @@
+identity:
+  name: ask_agent
+  author: cloud-code-team
+  label:
+    en_US: Ask Agent
+    de_DE: Agent fragen
+description:
+  human:
+    en_US: Send a query to a specialized Cloud Code agent (worker, architect, coder, tester, reviewer, devops, docs, security, planner, debug)
+    de_DE: Sende eine Anfrage an einen spezialisierten Cloud Code Agent
+  llm: Route a question to a specialized agent in the Cloud Code Team multi-agent system. Available agents are worker (general), architect (system design), coder (implementation), tester (testing), reviewer (code review), devops (operations), docs (documentation), security (security analysis), planner (project planning), debug (debugging).
+parameters:
+  - name: agent
+    type: string
+    required: true
+    label:
+      en_US: Agent Name
+    human_description:
+      en_US: "The specialized agent to query: worker, architect, coder, tester, reviewer, devops, docs, security, planner, debug"
+    llm_description: "Agent to route the query to. One of: worker, architect, coder, tester, reviewer, devops, docs, security, planner, debug"
+    form: llm
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+    human_description:
+      en_US: The question or task to send to the agent
+    llm_description: The question or task for the agent
+    form: llm
+  - name: user
+    type: string
+    required: false
+    default: dify-plugin
+    label:
+      en_US: User ID
+    human_description:
+      en_US: User identifier for session tracking
+    llm_description: User identifier
+    form: form
+extra:
+  python:
+    source: tools/ask_agent.py

@@ -1,0 +1,38 @@
+identity:
+  author: cloud-code-team
+  name: cloud_code
+  label:
+    en_US: Cloud Code Team
+    de_DE: Cloud Code Team
+  description:
+    en_US: Multi-Agent AI system with 10 specialized agents, knowledge graph, and anti-hallucination system
+    de_DE: Multi-Agent KI-System mit 10 spezialisierten Agents, Knowledge Graph und Anti-Halluzinations-System
+  icon: icon.svg
+credentials_for_provider:
+  orchestrator_url:
+    type: text-input
+    required: true
+    default: http://host.docker.internal:8000
+    label:
+      en_US: Orchestrator URL
+      de_DE: Orchestrator URL
+    placeholder:
+      en_US: http://host.docker.internal:8000
+    help:
+      en_US: URL of the Cloud Code Orchestrator API
+  api_key:
+    type: secret-input
+    required: false
+    label:
+      en_US: API Key (optional)
+      de_DE: API Key (optional)
+    placeholder:
+      en_US: Leave empty if no authentication required
+tools:
+  - tools/ask_agent.yaml
+  - tools/query_knowledge.yaml
+  - tools/get_memory.yaml
+  - tools/set_memory.yaml
+extra:
+  python:
+    source: provider/cloud_code.py
