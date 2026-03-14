@@ -7,12 +7,12 @@ Der Orchestrator v3.0 routet Anfragen an spezialisierte Agents:
 - GET /config/agents → Zeigt alle Agent-Konfigurationen inkl. Modell und Tier
 
 ## Chatflow-Architektur (v2)
-Jeder der 11 Agents folgt diesem Chatflow:
+Jeder der 12 Agents folgt diesem Chatflow:
 1. Start → Eingabe empfangen
 2. Parallel: Mem0 Retrieve + Knowledge Base Retrieval (Cloud Code Team KB)
 3. LLM Anti-Halluzination Node mit tier-spezifischem Modell:
    - Tier 1 Code-Agents (Architect, Coder, DevOps, Tester): **minimax-m2.5:cloud**
-   - Tier 2 Multilingual-Agents (Planner, Docs, Worker, Reviewer, Security, Debug): **glm-4.7:cloud**
+   - Tier 2 Multilingual-Agents (Planner, Docs, Worker, Reviewer, Security, Debug, Coach): **glm-4.7:cloud**
    - Tier 3 Memory-Agent: **deepseek-v3.2:cloud**
 4. Answer Node + Mem0 Save (parallel)
 

@@ -26,14 +26,14 @@ AGENT_KEYS: Dict[str, str] = {}
 # Agent roles
 AGENT_ROLES = [
     "architect", "coder", "tester", "reviewer", "devops",
-    "docs", "security", "planner", "debug", "worker"
+    "docs", "security", "planner", "debug", "worker", "coach"
 ]
 
 
 # === 3-TIER MODEL CONFIGURATION (per Agent) ===
 # Tier 1 (Code): MiniMax-M2.5 - architect, coder, devops, tester
-# Tier 2 (Multilingual): Qwen3-32B - coach, planner, docs, worker, reviewer, security, debug
-# Tier 3 (Guenstig): DeepSeek V3.2 - memory, faq, rag
+# Tier 2 (Multilingual): GLM-4.7 - coach, planner, docs, worker, reviewer, security, debug
+# Tier 3 (Guenstig): DeepSeek V3.2 - memory
 AGENT_MODEL_CONFIG = {
     "architect":  {"model": "minimax-m2.5",  "tier": "tier1-code",         "temperature": 0.3, "provider": "ollama-cloud"},
     "coder":      {"model": "minimax-m2.5",  "tier": "tier1-code",         "temperature": 0.2, "provider": "ollama-cloud"},
@@ -209,7 +209,7 @@ async def load_agent_keys():
         env_key = f"AGENT_{role.upper()}_KEY"
         AGENT_KEYS[role] = os.getenv(env_key, "")
     configured = sum(1 for v in AGENT_KEYS.values() if v)
-    logger.info(f"Orchestrator v2 started. {configured}/{len(AGENT_ROLES)} agents configured.")
+    logger.info(f"Orchestrator v3 started. {configured}/{len(AGENT_ROLES)} agents configured.")
     logger.info("Using streaming mode to bypass Dify v1.13 Answer-Node bug.")
 
 if __name__ == "__main__":

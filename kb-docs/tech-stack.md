@@ -30,7 +30,7 @@ Docker-Container erreichen Ollama über docker0 Bridge IP 172.17.0.1:11434.
 - Spezialisierung: Code-Generierung, Architektur, technische Aufgaben
 
 ### Tier 2 - Multilingual: GLM-4.7
-- Agents: Planner (0.4), Docs (0.4), Worker (0.5), Reviewer (0.3), Security (0.2), Debug (0.3)
+- Agents: Planner (0.4), Docs (0.4), Worker (0.5), Reviewer (0.3), Security (0.2), Debug (0.3), Coach (0.5)
 - Spezialisierung: Mehrsprachig, Planung, Reviews, Dokumentation
 
 ### Tier 3 - Günstig: DeepSeek V3.2

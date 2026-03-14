@@ -1,4 +1,4 @@
-version: 0.0.1
+version: 3.0.0
 type: plugin
 author: cloud-code-team
 name: cloud-code-orchestrator
@@ -27,7 +27,7 @@ plugins:
   models: []
   endpoints: []
 meta:
-  version: 0.0.1
+  version: 3.0.0
   arch:
     - amd64
     - arm64

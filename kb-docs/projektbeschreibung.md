@@ -2,7 +2,7 @@
 
 ## Überblick
 Das Cloud Code Team ist ein KI-Multi-Agent-System basierend auf Dify v1.13 (Self-Hosted).
-Es besteht aus 10 spezialisierten Agents + 1 Memory Agent, die über einen FastAPI Orchestrator (v3.0) koordiniert werden.
+Es besteht aus 11 spezialisierten Agents + 1 Memory Agent, die über einen FastAPI Orchestrator (v3.0) koordiniert werden.
 
 ## Architektur
 - **Plattform:** Dify v1.13.0 Self-Hosted auf Hetzner CCX33
@@ -39,6 +39,7 @@ Spezialisiert auf mehrsprachige Kommunikation, Planung und Reviews.
 | Reviewer | glm-4.7:cloud | 0.3 | 8192 |
 | Security | glm-4.7:cloud | 0.2 | 8192 |
 | Debug | glm-4.7:cloud | 0.3 | 8192 |
+| Coach | glm-4.7:cloud | 0.5 | 8192 |
 
 ### Tier 3 - Günstig (DeepSeek V3.2)
 Optimiert für Memory-Operationen mit minimaler Kreativität.
@@ -46,7 +47,7 @@ Optimiert für Memory-Operationen mit minimaler Kreativität.
 |-------|--------|------------|-------------|
 | Memory | deepseek-v3.2:cloud | 0.1 | 8192 |
 
-## 11 Agents
+## 12 Agents
 1. **Architect** - System-Architektur, Design-Entscheidungen (Tier 1)
 2. **Coder** - Code-Entwicklung, Implementation (Tier 1)
 3. **Tester** - Testing, QA, Testfälle (Tier 1)
@@ -57,7 +58,8 @@ Optimiert für Memory-Operationen mit minimaler Kreativität.
 8. **Planner** - Projektplanung, Sprint-Management (Tier 2)
 9. **Debug** - Debugging, Fehleranalyse (Tier 2)
 10. **Worker** - Allgemeine Aufgaben, Support (Tier 2)
-11. **Memory** - Kontextgedächtnis, Erinnerungen (Tier 3)
+11. **Coach** - Coaching, Mentoring, Teamführung (Tier 2)
+12. **Memory** - Kontextgedächtnis, Erinnerungen (Tier 3)
 
 ## Anti-Halluzinations-System
 Alle Agents folgen 5 Kernregeln:
