@@ -1,5 +1,5 @@
 """
-Cloud Code Team - Multi-Agent Orchestrator v2
+Cloud Code Team - Multi-Agent Orchestrator v3
 FastAPI service that coordinates Dify Chatflow agents via streaming API
 Workaround: Extracts LLM output from streaming node_finished events
 (bypasses Dify v1.13 Answer-Node template resolution bug)
@@ -51,7 +51,7 @@ AGENT_MODEL_CONFIG = {
 
 EMBEDDING_CONFIG = {
     "model": "qwen3-embedding-8b",
-    "provider": "ollama-cloud",
+    "provider": "ollama-local",
     "dimensions": 4096,
 }
 
