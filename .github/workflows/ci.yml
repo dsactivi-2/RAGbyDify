@@ -1,0 +1,160 @@
+name: Cloud Code Team CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check Python syntax (all .py files)
+        run: |
+          echo "=== Syntax-Check ==="
+          errors=0
+          for f in $(find . -name "*.py" -not -path "./.git/*" -not -path "./__pycache__/*"); do
+            if ! python -m py_compile "$f" 2>/dev/null; then
+              echo "FAIL: $f"
+              python -m py_compile "$f" || true
+              errors=$((errors + 1))
+            else
+              echo "OK:   $f"
+            fi
+          done
+          echo ""
+          if [ $errors -gt 0 ]; then
+            echo "$errors Datei(en) mit Syntax-Fehlern!"
+            exit 1
+          fi
+          echo "Alle Python-Dateien sind syntaktisch korrekt."
+
+  config-check:
+    name: Config Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate YAML files
+        run: |
+          echo "=== YAML Validation ==="
+          errors=0
+          for f in $(find . -name "*.yaml" -o -name "*.yml" | grep -v ".git"); do
+            if python -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null; then
+              echo "OK:   $f"
+            else
+              echo "FAIL: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "$errors YAML-Datei(en) ungueltig!"
+            exit 1
+          fi
+          echo "Alle YAML-Dateien sind valide."
+
+      - name: Validate JSON files
+        run: |
+          echo "=== JSON Validation ==="
+          errors=0
+          for f in $(find . -name "*.json" | grep -v ".git" | grep -v "node_modules"); do
+            if python -m json.tool "$f" > /dev/null 2>&1; then
+              echo "OK:   $f"
+            else
+              echo "FAIL: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "$errors JSON-Datei(en) ungueltig!"
+            exit 1
+          fi
+          echo "Alle JSON-Dateien sind valide."
+
+  security-scan:
+    name: Security Quick Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "=== Security Scan: Hardcodierte Secrets ==="
+          found=0
+
+          # Patterns die auf hardcodierte Keys hindeuten
+          patterns=(
+            "app-[a-f0-9]{32}"
+            "m0-[a-zA-Z0-9]{30,}"
+            "sk-[a-zA-Z0-9]{30,}"
+            "[0-9]{10}:AA[A-Za-z0-9_-]{33}"
+          )
+
+          for pattern in "${patterns[@]}"; do
+            matches=$(grep -rn "$pattern" --include="*.py" --include="*.md" --include="*.yaml" --include="*.yml" . 2>/dev/null | grep -v ".git" | grep -v "TODOS.md" | grep -v "RUNBOOK.md" || true)
+            if [ -n "$matches" ]; then
+              echo "WARNUNG: Moeglicher hardcodierter Key gefunden:"
+              echo "$matches"
+              found=$((found + 1))
+            fi
+          done
+
+          if [ $found -gt 0 ]; then
+            echo ""
+            echo "WARNUNG: $found Pattern(s) gefunden die wie API-Keys aussehen."
+            echo "Bitte pruefen und in .env verschieben!"
+            # Warnung aber kein Fehler — damit der CI nicht sofort bricht
+            # Auf exit 1 umstellen wenn T01 erledigt ist:
+            # exit 1
+          else
+            echo "Keine offensichtlichen hardcodierten Secrets gefunden."
+          fi
+
+  structure-check:
+    name: Project Structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required files exist
+        run: |
+          echo "=== Struktur-Check ==="
+          required_files=(
+            "orchestrator/main.py"
+            "rag_middleware.py"
+            "telegram_bot.py"
+            "plugins/cloud-code-orchestrator/manifest.yaml"
+            ".gitignore"
+            "README.md"
+          )
+          missing=0
+          for f in "${required_files[@]}"; do
+            if [ -f "$f" ]; then
+              echo "OK:   $f"
+            else
+              echo "FEHLT: $f"
+              missing=$((missing + 1))
+            fi
+          done
+          if [ $missing -gt 0 ]; then
+            echo "$missing erforderliche Datei(en) fehlen!"
+            exit 1
+          fi
+          echo "Alle erforderlichen Dateien vorhanden."
