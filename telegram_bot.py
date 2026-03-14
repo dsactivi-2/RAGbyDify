@@ -18,12 +18,12 @@ from telegram.ext import (
 )
 
 # Configuration
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "REDACTED_TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 DIFY_API_URL = os.environ.get("DIFY_API_URL", "http://localhost:3080/v1")
-DIFY_API_KEY = os.environ.get("DIFY_API_KEY", "REDACTED_DIFY_API_KEY")
-DIFY_KB_ID = "REDACTED_DIFY_KB_ID"
-DIFY_KB_KEY = "REDACTED_DIFY_KB_KEY"
-HIPPORAG_URL = "http://localhost:8001/knowledge/query"
+DIFY_API_KEY = os.environ.get("DIFY_API_KEY", "")
+DIFY_KB_ID = os.environ.get("DIFY_KB_ID", "")
+DIFY_KB_KEY = os.environ.get("DIFY_KB_KEY", "")
+HIPPORAG_URL = os.environ.get("HIPPORAG_URL", "http://localhost:8001/knowledge/query")
 
 # Persistent storage paths
 DATA_DIR = Path("/opt/cloud-code/data")

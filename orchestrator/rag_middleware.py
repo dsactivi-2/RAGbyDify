@@ -34,8 +34,8 @@ logger = logging.getLogger("RAGMiddleware")
 
 # ──────── Configuration ────────
 DIFY_API_URL = os.getenv("DIFY_API_URL", "http://localhost:3080/v1")
-DIFY_KB_ID = os.getenv("DIFY_KB_ID", "REDACTED_DIFY_KB_ID")
-DIFY_KB_KEY = os.getenv("DIFY_KB_KEY", "REDACTED_DIFY_KB_KEY")
+DIFY_KB_ID = os.getenv("DIFY_KB_ID", "")
+DIFY_KB_KEY = os.getenv("DIFY_KB_KEY", "")
 HIPPORAG_URL = os.getenv("HIPPORAG_URL", "http://localhost:8001/knowledge/query")
 TIMEOUT = int(os.getenv("RAG_TIMEOUT", "10"))
 KB_TOP_K = int(os.getenv("RAG_KB_TOP_K", "5"))

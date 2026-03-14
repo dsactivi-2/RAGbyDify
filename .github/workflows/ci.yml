@@ -118,11 +118,9 @@ jobs:
 
           if [ $found -gt 0 ]; then
             echo ""
-            echo "WARNUNG: $found Pattern(s) gefunden die wie API-Keys aussehen."
-            echo "Bitte pruefen und in .env verschieben!"
-            # Warnung aber kein Fehler — damit der CI nicht sofort bricht
-            # Auf exit 1 umstellen wenn T01 erledigt ist:
-            # exit 1
+            echo "FEHLER: $found Pattern(s) gefunden die wie API-Keys aussehen."
+            echo "API-Keys gehoeren in .env, nicht in den Code!"
+            exit 1
           else
             echo "Keine offensichtlichen hardcodierten Secrets gefunden."
           fi

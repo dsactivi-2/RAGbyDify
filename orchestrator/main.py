@@ -391,10 +391,13 @@ async def process_feedback(req: FeedbackRequest):
     """Process user feedback for self-learning"""
     import httpx
     
-    MEM0_API_KEY = os.getenv("MEM0_API_KEY", "REDACTED_MEM0_API_KEY")
-    MEM0_ORG_ID = os.getenv("MEM0_ORG_ID", "REDACTED_MEM0_ORG_ID")
-    MEM0_PROJECT_ID = os.getenv("MEM0_PROJECT_ID", "REDACTED_MEM0_PROJECT_ID")
-    
+    MEM0_API_KEY = os.getenv("MEM0_API_KEY", "")
+    MEM0_ORG_ID = os.getenv("MEM0_ORG_ID", "")
+    MEM0_PROJECT_ID = os.getenv("MEM0_PROJECT_ID", "")
+
+    if not all([MEM0_API_KEY, MEM0_ORG_ID, MEM0_PROJECT_ID]):
+        return FeedbackResponse(status="error", action="missing_env", memory_saved=False)
+
     if req.rating == "positive":
         memory_text = f"[POSITIVE FEEDBACK] Agent {req.agent}: Antwort war hilfreich."
         if req.feedback:
@@ -443,8 +446,8 @@ async def learning_stats():
     """Get self-learning statistics"""
     import httpx
     
-    MEM0_API_KEY = os.getenv("MEM0_API_KEY", "REDACTED_MEM0_API_KEY")
-    
+    MEM0_API_KEY = os.getenv("MEM0_API_KEY", "")
+
     stats = {}
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:

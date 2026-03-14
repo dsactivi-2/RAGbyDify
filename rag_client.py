@@ -38,10 +38,10 @@ except ImportError:
 
 logger = logging.getLogger("RAGClient")
 
-# Defaults — work on the Hetzner server out of the box
+# Defaults — all secrets MUST come from environment variables
 DEFAULT_DIFY_API_URL = "http://localhost:3080/v1"
-DEFAULT_DIFY_KB_ID = "REDACTED_DIFY_KB_ID"
-DEFAULT_DIFY_KB_KEY = "REDACTED_DIFY_KB_KEY"
+DEFAULT_DIFY_KB_ID = os.getenv("DIFY_KB_ID", "")
+DEFAULT_DIFY_KB_KEY = os.getenv("DIFY_KB_KEY", "")
 DEFAULT_HIPPORAG_URL = "http://localhost:8001/knowledge/query"
 DEFAULT_TIMEOUT = 10
 DEFAULT_KB_TOP_K = 5
