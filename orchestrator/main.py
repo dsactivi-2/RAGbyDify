@@ -698,3 +698,44 @@ async def hipporag_query(query: str, hop_depth: int = 3, limit: int = 5):
 async def rag_health_endpoint():
     """Check all RAG + Memory components"""
     return await rag_health()
+
+
+# ══════════════════════════════════════════════════════════════
+# WORKFLOW MODULE LOADER
+# Laedt alle Workflow-Module aus orchestrator/workflows/
+# Jedes Modul exportiert einen FastAPI APIRouter
+# ══════════════════════════════════════════════════════════════
+
+import importlib
+import sys
+import os as _os
+
+# Helper: Agent aufrufen (wird in Workflow-Module injiziert)
+async def _orchestrator_call_agent(agent: str, query: str, user: str) -> Dict:
+    """Wrapper fuer Workflow-Module: ruft einen Agent ueber den Orchestrator auf."""
+    api_key = AGENT_KEYS.get(agent)
+    if not api_key:
+        return {"answer": f"[ERROR] Agent {agent} nicht konfiguriert", "conversation_id": "", "message_id": "", "sources": None}
+    return await _call_agent_streaming(api_key=api_key, query=query, user=user, agent=agent)
+
+# Workflow-Module laden
+_workflow_dir = _os.path.join(_os.path.dirname(__file__), "workflows")
+if _os.path.isdir(_workflow_dir):
+    sys.path.insert(0, _os.path.dirname(__file__))
+    _loaded = []
+    for _fname in sorted(_os.listdir(_workflow_dir)):
+        if _fname.endswith(".py") and _fname != "__init__.py":
+            _mod_name = _fname[:-3]
+            try:
+                _mod = importlib.import_module(f"workflows.{_mod_name}")
+                # Injiziere Agent-Caller
+                if hasattr(_mod, "set_agent_caller"):
+                    _mod.set_agent_caller(_orchestrator_call_agent)
+                # Registriere Router
+                if hasattr(_mod, "router"):
+                    app.include_router(_mod.router)
+                    _loaded.append(_mod_name)
+                    logger.info(f"Workflow geladen: {_mod_name}")
+            except Exception as _e:
+                logger.error(f"Workflow {_mod_name} konnte nicht geladen werden: {_e}")
+    logger.info(f"Workflow-Module: {len(_loaded)} geladen ({', '.join(_loaded)})")
