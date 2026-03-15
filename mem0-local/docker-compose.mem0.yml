@@ -1,10 +1,11 @@
 # ══════════════════════════════════════════════════════════════
 # CLOUD CODE TEAM — MEM0 LOCAL STACK
 # ══════════════════════════════════════════════════════════════
-# Nutzt bestehende Qdrant (docker_default) und Neo4j (bridge)
-# Ollama laeuft als systemd auf dem Host (172.17.0.1:11434)
-# Usage: cd /opt/cloud-code/mem0-local && docker compose -f docker-compose.mem0.yml up -d
+# Erweitert den bestehenden docker-compose.yml um lokales Mem0
+# Usage: docker compose -f docker-compose.yml -f docker-compose.mem0.yml up -d
 # ══════════════════════════════════════════════════════════════
+
+version: "3.8"
 
 services:
 
@@ -18,42 +19,48 @@ services:
     container_name: cct-mem0
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8002:8002"
+      - "8002:8002"
     environment:
+      # Server
       MEM0_HOST: "0.0.0.0"
       MEM0_PORT: "8002"
       MEM0_LOG_LEVEL: "INFO"
 
-      # Vector Store (Qdrant — laeuft in Dify docker_default Netzwerk)
+      # Vector Store (eigenes Qdrant v1.12 — kompatibel mit qdrant-client 1.17+)
       VECTOR_STORE_PROVIDER: "qdrant"
-      QDRANT_URL: "http://qdrant:6333"
+      QDRANT_URL: "http://mem0-qdrant:6333"
       QDRANT_COLLECTION: "mem0_memories"
 
-      # Graph Store (Neo4j — laeuft auf Bridge, erreichbar via Host-IP)
+      # Graph Store (Neo4j — bereits im Stack)
       GRAPH_STORE_PROVIDER: "neo4j"
       NEO4J_URI: "bolt://neo4j:7687"
       NEO4J_USER: "neo4j"
       NEO4J_PASSWORD: "22e58741703f24f1913550c9a8a51c99"
-      NEO4J_DATABASE: "mem0"
+      NEO4J_DATABASE: "neo4j"
 
-      # LLM fuer Memory-Extraktion (Ollama — systemd auf Host)
+      # LLM für Memory-Extraktion (Ollama — bereits im Stack)
       LLM_PROVIDER: "ollama"
       LLM_MODEL: "glm-4.7:cloud"
-      LLM_BASE_URL: "http://172.17.0.1:11434"
+      LLM_BASE_URL: "http://172.19.0.1:11434"
       LLM_TEMPERATURE: "0.1"
 
       # Embeddings (Ollama)
       EMBEDDER_PROVIDER: "ollama"
       EMBEDDER_MODEL: "qwen3-embedding:latest"
-      EMBEDDER_BASE_URL: "http://172.17.0.1:11434"
-      EMBEDDER_EMBEDDING_DIMS: "1536"
+      EMBEDDER_BASE_URL: "http://172.19.0.1:11434"
+      EMBEDDER_EMBEDDING_DIMS: "4096"
 
       # Memory Config
       MEM0_MEMORY_THRESHOLD: "0.7"
       MEM0_MAX_MEMORIES: "10000"
       MEM0_AUTO_EXTRACT: "true"
+      MEM0_VERSION: "v1.1"
+
     volumes:
       - mem0_data:/app/data
+    depends_on:
+      mem0-qdrant:
+        condition: service_healthy
     networks:
       - docker_default
     healthcheck:
@@ -61,7 +68,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 15s
 
   # ──────────────────────────────────────────
   # AGENT WATCHER (Auto-Detection + Monitoring)
@@ -73,30 +80,55 @@ services:
     container_name: cct-agent-watcher
     restart: unless-stopped
     environment:
-      DIFY_URL: "https://difyv2.activi.io"
-      DIFY_ADMIN_EMAIL: "ds.selmanovic@gmail.com"
-      DIFY_ADMIN_PASSWORD: "UIbyLfletYZ9VtQVxnUZ"
-      TELEGRAM_TOKEN: "8718856271:AAHKkOplIj0bgZ3sGa15cLfEbzoSMzpHj4o"
-      TELEGRAM_CHAT_ID: ""
-      MEM0_LOCAL_URL: "http://cct-mem0:8002"
+      DIFY_URL: "http://nginx:80"
+      DIFY_EXTERNAL_URL: "https://difyv2.activi.io"
+      DIFY_ADMIN_EMAIL: "${DIFY_ADMIN_EMAIL:-ds.selmanovic@gmail.com}"
+      DIFY_ADMIN_PASSWORD: "${DIFY_ADMIN_PASSWORD:-UIbyLfletYZ9VtQVxnUZ}"
+      TELEGRAM_TOKEN: "${TELEGRAM_TOKEN:-8718856271:AAHKkOplIj0bgZ3sGa15cLfEbzoSMzpHj4o}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID}"
+      MEM0_LOCAL_URL: "http://mem0:8002"
       POLL_INTERVAL: "60"
       HEALTHCHECK_INTERVAL: "300"
       LOG_LEVEL: "INFO"
     volumes:
       - watcher_data:/app/data
     depends_on:
-      mem0:
-        condition: service_healthy
+      - mem0
     networks:
       - docker_default
+
+  # ──────────────────────────────────────────
+  # QDRANT — eigene Vector DB für Mem0 (v1.12+, kompatibel mit qdrant-client 1.17)
+  # Dify's Qdrant ist v1.7/1.8 und inkompatibel mit points/query API
+  # ──────────────────────────────────────────
+  mem0-qdrant:
+    image: qdrant/qdrant:v1.12.1
+    container_name: cct-mem0-qdrant
+    restart: unless-stopped
+    ports:
+      - "16333:6333"
+      - "16334:6334"
+    volumes:
+      - mem0_qdrant_data:/qdrant/storage
+    networks:
+      - docker_default
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # Neo4j wird vom bestehenden Container `neo4j` bereitgestellt (docker_default Netzwerk)
 
 volumes:
   mem0_data:
     driver: local
   watcher_data:
     driver: local
+  mem0_qdrant_data:
+    driver: local
 
 networks:
   docker_default:
     external: true
-    name: docker_default

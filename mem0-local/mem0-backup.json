@@ -1,0 +1,219 @@
+[
+  {
+    "id": "91414103-ef6e-43fe-965e-7996603cf13b",
+    "memory": "User claims that the assistant is not the Worker Agent",
+    "user_id": "cct-architect",
+    "metadata": null,
+    "categories": [
+      "misc"
+    ],
+    "created_at": "2026-03-14T03:14:47.770520-07:00",
+    "updated_at": "2026-03-14T03:16:07.608773-07:00",
+    "expiration_date": null,
+    "structured_attributes": {
+      "day": 14,
+      "hour": 10,
+      "year": 2026,
+      "month": 3,
+      "minute": 14,
+      "quarter": 1,
+      "is_weekend": true,
+      "day_of_week": "saturday",
+      "day_of_year": 73,
+      "week_of_year": 11
+    },
+    "_source_entity": "cct-architect"
+  },
+  {
+    "id": "b7f4ac10-8512-4e5e-919c-0f75c133cde2",
+    "memory": "User asks for a description of the Cloud Code Team.",
+    "user_id": "cct-architect",
+    "metadata": null,
+    "categories": [
+      "professional_details"
+    ],
+    "created_at": "2026-03-13T08:41:14.243977-07:00",
+    "updated_at": "2026-03-13T08:41:14.246613-07:00",
+    "expiration_date": null,
+    "structured_attributes": {
+      "day": 13,
+      "hour": 15,
+      "year": 2026,
+      "month": 3,
+      "minute": 41,
+      "quarter": 1,
+      "is_weekend": false,
+      "day_of_week": "friday",
+      "day_of_year": 72,
+      "week_of_year": 11
+    },
+    "_source_entity": "cct-architect"
+  },
+  {
+    "id": "c90ad510-3cfb-4880-9cff-08483cc34b26",
+    "memory": "User identifies as the Architect Agent and states they are functioning.",
+    "user_id": "cct-architect",
+    "metadata": null,
+    "categories": [
+      "misc"
+    ],
+    "created_at": "2026-03-13T00:48:28.668157-07:00",
+    "updated_at": "2026-03-13T00:48:28.671750-07:00",
+    "expiration_date": null,
+    "structured_attributes": {
+      "day": 13,
+      "hour": 7,
+      "year": 2026,
+      "month": 3,
+      "minute": 48,
+      "quarter": 1,
+      "is_weekend": false,
+      "day_of_week": "friday",
+      "day_of_year": 72,
+      "week_of_year": 11
+    },
+    "_source_entity": "cct-architect"
+  },
+  {
+    "id": "3874b7db-9aec-4839-b678-49faaf9dba94",
+    "memory": "User identifies as the Coder Agent and says they are functioning.",
+    "user_id": "cct-coder",
+    "metadata": null,
+    "categories": [
+      "professional_details"
+    ],
+    "created_at": "2026-03-13T01:07:47.136561-07:00",
+    "updated_at": "2026-03-13T01:07:47.138962-07:00",
+    "expiration_date": null,
+    "structured_attributes": {
+      "day": 13,
+      "hour": 8,
+      "year": 2026,
+      "month": 3,
+      "minute": 7,
+      "quarter": 1,
+      "is_weekend": false,
+      "day_of_week": "friday",
+      "day_of_year": 72,
+      "week_of_year": 11
+    },
+    "_source_entity": "cct-coder"
+  },
+  {
+    "id": "7f6471e0-8b0e-461f-920a-f292297c2faa",
+    "memory": "Denis is a member of the Cloud Code Team",
+    "user_id": "cloud-code-team",
+    "metadata": null,
+    "categories": [
+      "personal_details",
+      "professional_details"
+    ],
+    "created_at": "2026-03-12T22:49:18.002938-07:00",
+    "updated_at": "2026-03-12T22:49:18.005371-07:00",
+    "expiration_date": null,
+    "structured_attributes": {
+      "day": 13,
+      "hour": 5,
+      "year": 2026,
+      "month": 3,
+      "minute": 49,
+      "quarter": 1,
+      "is_weekend": false,
+      "day_of_week": "friday",
+      "day_of_year": 72,
+      "week_of_year": 11
+    },
+    "_source_entity": "cloud-code-team"
+  },
+  {
+    "id": "7eef8175-3e10-4d80-b1e6-88026f8cfb94",
+    "memory": "Cloud Code Team Phase 2 Test indicates that the Memory Layer is functioning",
+    "user_id": "cloud-code-team",
+    "metadata": null,
+    "categories": [
+      "technology"
+    ],
+    "created_at": "2026-03-12T22:18:21.093835-07:00",
+    "updated_at": "2026-03-12T22:18:21.096869-07:00",
+    "expiration_date": null,
+    "structured_attributes": {
+      "day": 13,
+      "hour": 5,
+      "year": 2026,
+      "month": 3,
+      "minute": 18,
+      "quarter": 1,
+      "is_weekend": false,
+      "day_of_week": "friday",
+      "day_of_year": 72,
+      "week_of_year": 11
+    },
+    "_source_entity": "cloud-code-team"
+  },
+  {
+    "id": "239dc472-ed7e-4385-8417-ecb070110041",
+    "memory": "I am a technical user",
+    "user_id": "playground",
+    "metadata": {
+      "source": "onboarding",
+      "company": "A.AI",
+      "usecase": "Coding agents",
+      "timestamp": "2026-03-12T19:39:32.964179",
+      "project_ready": true,
+      "is_technical_user": true,
+      "onboarding_status": "API_ACTIVATION_PENDING"
+    },
+    "categories": [
+      "user_preferences"
+    ],
+    "created_at": "2026-03-12T19:39:36.348371-07:00",
+    "updated_at": "2026-03-12T19:39:45.884652-07:00",
+    "expiration_date": null,
+    "structured_attributes": null,
+    "_source_entity": "playground"
+  },
+  {
+    "id": "494dcbb6-fa7b-4dda-ae5b-3c15c6db86e0",
+    "memory": "My industry is Coding agents.",
+    "user_id": "playground",
+    "metadata": {
+      "source": "onboarding",
+      "company": "A.AI",
+      "usecase": "Coding agents",
+      "timestamp": "2026-03-12T19:39:32.964179",
+      "project_ready": true,
+      "is_technical_user": true,
+      "onboarding_status": "API_ACTIVATION_PENDING"
+    },
+    "categories": [
+      "professional_details"
+    ],
+    "created_at": "2026-03-12T19:39:34.319131-07:00",
+    "updated_at": "2026-03-12T19:39:44.874570-07:00",
+    "expiration_date": null,
+    "structured_attributes": null,
+    "_source_entity": "playground"
+  },
+  {
+    "id": "8a528ebd-474b-4bca-b215-c9b0ceb5560b",
+    "memory": "I work at A.AI",
+    "user_id": "playground",
+    "metadata": {
+      "source": "onboarding",
+      "company": "A.AI",
+      "usecase": "Coding agents",
+      "timestamp": "2026-03-12T19:39:32.964179",
+      "project_ready": true,
+      "is_technical_user": true,
+      "onboarding_status": "API_ACTIVATION_PENDING"
+    },
+    "categories": [
+      "professional_details"
+    ],
+    "created_at": "2026-03-12T19:39:33.079416-07:00",
+    "updated_at": "2026-03-12T19:39:44.636345-07:00",
+    "expiration_date": null,
+    "structured_attributes": null,
+    "_source_entity": "playground"
+  }
+]
