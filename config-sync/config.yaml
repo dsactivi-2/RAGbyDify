@@ -1,0 +1,241 @@
+# ══════════════════════════════════════════════════════════════
+# CLOUD CODE TEAM — SINGLE SOURCE OF TRUTH
+# ══════════════════════════════════════════════════════════════
+# Alle Werte NUR HIER ändern → dann: python generate.py
+# Änderungen propagieren automatisch in .env, Runbook, Doku, etc.
+# ══════════════════════════════════════════════════════════════
+
+project:
+  name: "Cloud Code Team"
+  version: "3.1"
+  datum: "2026-03-15"
+
+# ──────────────────────────────────────────
+# PHASE 1: SERVER + INFRASTRUKTUR
+# ──────────────────────────────────────────
+
+server:
+  ip: "178.104.51.123"
+  ssh_user: "root"
+  ssh_key_path: "~/.ssh/cloud-code-team"
+  location: "nbg1"          # Hetzner Standort
+  type: "cx31"
+  image: "ubuntu-22.04"
+
+hetzner:
+  # ⚠ MANUELL: console.hetzner.cloud > API-Tokens
+  api_token: ""
+  ssh_key_name: "cloud-code-team"
+
+domain:
+  name: "difyv2.activi.io"
+  email: "ds.selmanovic@gmail.com"
+
+cloudflare:
+  # ⚠ MANUELL: dash.cloudflare.com > activi.io > Overview
+  api_token: ""
+  zone_id: ""
+
+# ──────────────────────────────────────────
+# PHASE 1: DIFY KONFIGURATION
+# ──────────────────────────────────────────
+
+dify:
+  version: "1.13.0"
+  port: 80
+  api_port: 5001
+  admin_email: "ds.selmanovic@gmail.com"
+  admin_password: "UIbyLfletYZ9VtQVxnUZ"
+  secret_key: "1d204f259183360b2172f3e1de637808919833d54805e2e8d71a8f9ae3b34d83"
+
+database:
+  username: "postgres"
+  password: "079991ea32d07e20e5b13863f70dc52e"
+  host: "db"
+  port: 5432
+  name: "dify"
+
+redis:
+  host: "redis"
+  port: 6379
+  password: "3be515109c45004144b32e50c552fbc2"
+
+# ──────────────────────────────────────────
+# PHASE 1: LLM PROVIDER
+# ──────────────────────────────────────────
+
+llm:
+  openai:
+    # ⚠ MANUELL: platform.openai.com > API Keys
+    api_key: ""
+  openrouter:
+    # ⚠ MANUELL: openrouter.ai > Keys
+    api_key: ""
+    base_url: "https://openrouter.ai/api/v1"
+  ollama:
+    base_url: "http://localhost:11434"
+  anthropic:
+    # ⚠ MANUELL: console.anthropic.com > API Keys
+    api_key: ""
+  google:
+    api_key: ""
+
+embedding:
+  model: "text-embedding-3-small"
+  dimension: 1536
+
+# ──────────────────────────────────────────
+# PHASE 1: VECTOR DATABASE
+# ──────────────────────────────────────────
+
+qdrant:
+  url: "http://qdrant:6333"
+  # ⚠ MANUELL: Qdrant Cloud oder lokal ohne Key
+  api_key: ""
+  collection: "cloud_code_team"
+
+# ──────────────────────────────────────────
+# PHASE 2: TELEGRAM + DIFY API
+# ──────────────────────────────────────────
+
+telegram:
+  token: "8718856271:AAHKkOplIj0bgZ3sGa15cLfEbzoSMzpHj4o"
+
+dify_api:
+  url: "http://difyv2.activi.io/v1"
+  api_key: "app-1a85f7f85eb66852165ebb70ba268e0b"
+  kb_id: "260e0d73-8c6b-49ec-92df-a369affe482b"
+  kb_key: "dataset-WG3ca69737ZxjHdi4GFHEG28"
+
+# ──────────────────────────────────────────
+# PHASE 2: MEMORY (Mem0)
+# ──────────────────────────────────────────
+
+mem0:
+  # Cloud (Legacy — abgelöst, nur für Referenz)
+  cloud_api_key: "m0-a7p49M4dMCTc1vQrm7yWZUiKHfQRylEIgy1OzHoG"
+  cloud_org_id: "org_VgoITua21r2UQsW1Gc0IPLrbvUfduoVEOILnrCti"
+  cloud_project_id: "proj_1A9iikWOMqTE4gHBn0ciMRIRM1puUd4oTf1egX8v"
+
+  # Lokal (AKTIV — Drop-in Ersatz, Migration abgeschlossen)
+  mode: "local"                            # "local" aktiv seit 2026-03-15
+  local_url: "http://cct-mem0:8002"        # Container-Name im docker_default Netzwerk
+  local_url_host: "http://localhost:8002"   # Zugriff vom Host
+  local_port: 8002
+  shared_user_id: "cloud-code-team"        # Alle Agents teilen diesen Pool
+  llm_model: "glm-4.7:cloud"              # Für Memory-Extraktion
+  embedder_model: "qwen3-embedding:latest" # Für Embedding
+  memory_threshold: 0.7
+  max_memories: 10000
+  auto_extract: true
+
+  # Graph Memory (Pro-Feature, lokal gratis!)
+  graph_enabled: true
+  graph_database: "mem0"                   # Eigene Neo4j DB für Mem0
+
+# Agent Watcher (Monitoring Service)
+agent_watcher:
+  enabled: true
+  poll_interval: 60       # Sekunden
+  healthcheck_interval: 300
+  telegram_alerts: true
+
+# ──────────────────────────────────────────
+# PHASE 3: MULTI-AGENT ORCHESTRATOR
+# ──────────────────────────────────────────
+
+agents:
+  architect: "app-5E3mBWTXu5Oibgow25XMMkLW"
+  coder: "app-NLw1CreJ5Fdkeey6pN6lmdJV"
+  tester: "app-94q3NsVYNkwmolCtpsJdHcHV"
+  reviewer: "app-fiqbOuxSD2vGMAxLJvjQqwpr"
+  devops: "app-NGi1Ms79sttCpX5PKqhTzyL6"
+  docs: "app-rVYDwYAPpP9OZMInZtOLeaWI"
+  security: "app-Auq8Hk9LRA1U3eByr6qZ8eq9"
+  planner: "app-0D7sFBpMUPKg59RyGSvwnM6F"
+  debug: "app-WXv4sXWihRcc0PsetDNIexzW"
+  worker: "app-M7yRFTIiiO7dHawAxmEGudiB"
+  coach: "app-1a85f7f85eb66852165ebb70ba268e0b"
+
+orchestrator:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+
+celery:
+  broker_url: "redis://redis:6379/1"
+  result_backend: "redis://redis:6379/2"
+  task_timeout: 300
+
+# ──────────────────────────────────────────
+# PHASE 4: KNOWLEDGE GRAPH
+# ──────────────────────────────────────────
+
+neo4j:
+  uri: "bolt://neo4j:7687"
+  user: "neo4j"
+  password: "bd6a6b0f3a42f7b9a215ea9beffdc9ea"
+  database: "cloudcode"
+  http_port: 7474
+  bolt_port: 7687
+
+hipporag:
+  url: "http://localhost:8001/knowledge/query"
+  host: "0.0.0.0"
+  port: 8001
+  hop_depth: 3
+  min_score: 0.6
+  pagerank_weight: 0.3
+
+# ──────────────────────────────────────────
+# PHASE 4: RAG TUNING
+# ──────────────────────────────────────────
+
+rag:
+  timeout: 10
+  kb_top_k: 5
+  hippo_top_k: 5
+
+paths:
+  core_memory_db: "/opt/cloud-code/core_memory.db"
+  rag_data_dir: "/opt/cloud-code/data"
+  backup: "/backups"
+
+# ──────────────────────────────────────────
+# PHASE 5: AUTOMATION + RECALL
+# ──────────────────────────────────────────
+
+recall:
+  sqlite_vec_path: "/data/recall_memory.db"
+  embedding_dim: 1536
+  max_results: 20
+  decay_days: 90
+
+webhooks:
+  base_url: "https://difyv2.activi.io/v1/webhooks"
+
+# ──────────────────────────────────────────
+# PHASE 6: DOKU + QA
+# ──────────────────────────────────────────
+
+monitoring:
+  log_level: "INFO"
+  log_format: "json"
+
+backup:
+  retention_days: 30
+  cron: "0 3 * * *"
+
+evaluation:
+  ragas_enabled: true
+  benchmark_path: "/data/eval_benchmark.json"
+
+# ──────────────────────────────────────────
+# PHASE 7: FLOWISE (GEPARKT)
+# ──────────────────────────────────────────
+
+flowise:
+  enabled: false
+  url: "http://flowise:3000"
+  port: 3000
+  api_key: "6027c62882a91e872c756a5fd0de4011"
