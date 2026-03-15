@@ -22,6 +22,28 @@ import uvicorn
 from mem0 import Memory
 
 # ──────────────────────────────────────────
+# HELPERS
+# ──────────────────────────────────────────
+
+def safe_get_all(**kwargs) -> list:
+    """Wrapper für memory.get_all() — fängt 'unhashable type: slice' Bug ab.
+    Fallback: leere Liste + Warnung statt 500er."""
+    try:
+        result = memory.get_all(**kwargs)
+        # mem0 gibt manchmal dict mit "results" key zurück
+        if isinstance(result, dict):
+            return result.get("results", [])
+        if isinstance(result, list):
+            return result
+        return list(result) if result else []
+    except TypeError as e:
+        if "unhashable type" in str(e):
+            logger.warning("get_all() hit known slice bug — returning empty list. Filter: %s", kwargs)
+            return []
+        raise
+
+
+# ──────────────────────────────────────────
 # CONFIG
 # ──────────────────────────────────────────
 
@@ -186,7 +208,7 @@ async def list_memories(
         if run_id:
             kwargs["run_id"] = run_id
 
-        results = memory.get_all(**kwargs)
+        results = safe_get_all(**kwargs)
         logger.info("Listed %d memories for %s", len(results), kwargs)
         return {"results": results[:limit]}
     except Exception as e:
@@ -322,7 +344,17 @@ async def list_entities(
 ):
     """Entities auflisten (wie Mem0 Dashboard)"""
     try:
-        all_memories = memory.get_all()
+        kwargs = {}
+        if user_id:
+            kwargs["user_id"] = user_id
+        if agent_id:
+            kwargs["agent_id"] = agent_id
+        if run_id:
+            kwargs["run_id"] = run_id
+        # Default to shared user if no filter given
+        if not kwargs:
+            kwargs["user_id"] = "cloud-code-team"
+        all_memories = safe_get_all(**kwargs)
         entities = {}
         for mem in all_memories:
             uid = mem.get("user_id", "unknown")
@@ -356,7 +388,7 @@ async def get_graph(user_id: Optional[str] = None):
         if user_id:
             kwargs["user_id"] = user_id
 
-        all_mems = memory.get_all(**kwargs)
+        all_mems = safe_get_all(**kwargs)
         # Relationen werden automatisch von mem0 in Neo4j gespeichert
         return {
             "nodes": len(all_mems),
@@ -374,10 +406,13 @@ async def get_graph(user_id: Optional[str] = None):
 # ──────────────────────────────────────────
 
 @app.get("/v1/stats/")
-async def get_stats():
+async def get_stats(user_id: Optional[str] = "cloud-code-team"):
     """Statistiken für Dashboard"""
     try:
-        all_memories = memory.get_all()
+        kwargs = {}
+        if user_id:
+            kwargs["user_id"] = user_id
+        all_memories = safe_get_all(**kwargs)
 
         # Pro Entity zählen
         by_user = {}
