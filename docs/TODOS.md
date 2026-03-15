@@ -143,3 +143,31 @@ Stand: 14.03.2026
 | P3 | 7 | Haertung |
 | Phase 9 | 5 | Neue Features |
 | **Gesamt** | **22** | |
+
+
+---
+
+## Mem0 Dashboard (geplant)
+
+### T23: OpenMemory Dashboard deployen (Self-Hosted Mem0 UI)
+- **Quelle:** `mem0ai/mem0` GitHub Repo → OpenMemory Subprojekt
+- **Stack:** React Frontend + MCP Backend, Docker-basiert
+- **Ziel:** Ersatz fuer app.mem0.ai Cloud Dashboard (proprietaer, nicht self-hostbar)
+- **Anbindung:**
+  - Mem0 Server: `http://cct-mem0:8002` (bestehend, docker_default Netzwerk)
+  - Qdrant: `http://cct-mem0-qdrant:6333` (Port 16333 extern)
+  - Neo4j Graph: `bolt://neo4j:7687` (bestehend, DB: neo4j)
+- **Features die abgebildet werden muessen:**
+  - Memory-Liste mit Entities, Content, Categories (wie app.mem0.ai/memories)
+  - Entities-Uebersicht (User + Agent Zuordnung)
+  - Graph Memory Visualisierung (Neo4j Daten)
+  - Stats: Total Memories, Requests, Add/Retrieval Events
+- **Schritte:**
+  1. OpenMemory Repo clonen und Architektur pruefen
+  2. docker-compose.mem0.yml erweitern (neuer Service: openmemory-ui)
+  3. Frontend konfigurieren: API URL auf lokalen Mem0 Server
+  4. Neo4j Graph-Daten im Dashboard sichtbar machen
+  5. Port festlegen (Vorschlag: 3030 oder 3001)
+  6. Optional: Nginx Reverse Proxy fuer HTTPS
+- **Abhaengigkeiten:** cct-mem0 (healthy), cct-mem0-qdrant (healthy), neo4j (running)
+- **Prioritaet:** P2 (nach Migration abgeschlossen, vor Go-Live)

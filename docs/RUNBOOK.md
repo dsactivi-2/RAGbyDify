@@ -214,3 +214,100 @@ systemctl start cloud-code-orchestrator
 # Health pruefen
 sleep 3 && curl -s http://127.0.0.1:8000/health
 ```
+
+
+---
+
+## 8. Mem0 Stack Operations
+
+### 8.1 Mem0 Health pruefen
+
+```bash
+# Mem0 Server
+curl -s http://localhost:8002/health | python3 -m json.tool
+
+# Mem0 Stats
+curl -s http://localhost:8002/v1/stats/ | python3 -m json.tool
+
+# Mem0 Qdrant (separater Container\!)
+curl -s http://localhost:16333/collections | python3 -m json.tool
+
+# Deep-RAG (alle 3 Quellen)
+curl -s http://localhost:8000/workflow/deep-rag/health | python3 -m json.tool
+```
+
+**Erwartung:** Alle healthy, deep-rag: kb=true, mem0=true, hipporag=true
+
+### 8.2 Mem0 Container verwalten
+
+```bash
+cd /opt/cloud-code/mem0-local
+
+# Status
+docker compose -f docker-compose.mem0.yml ps
+
+# Neustart (einzeln)
+docker restart cct-mem0          # Mem0 Server
+docker restart cct-mem0-qdrant   # Qdrant v1.12
+docker restart cct-agent-watcher # Agent Watcher
+
+# Logs
+docker logs cct-mem0 --tail 50
+docker logs cct-agent-watcher --tail 20
+
+# Komplett neu deployen
+docker compose -f docker-compose.mem0.yml up -d --build
+```
+
+**ACHTUNG:** Mem0 haengt gelegentlich bei langen Ollama-Calls (Single Worker).
+Bei Timeout → `docker restart cct-mem0` loest das Problem.
+
+### 8.3 Mem0 Memory suchen/verwalten
+
+```bash
+# Suche
+curl -s -X POST http://localhost:8002/v1/memories/search/ \
+  -H "Content-Type: application/json" \
+  -d query:Denis | python3 -m json.tool
+
+# Alle Memories auflisten
+curl -s "http://localhost:8002/v1/memories/?user_id=cloud-code-team" | python3 -m json.tool
+
+# Entities
+curl -s http://localhost:8002/v1/entities/ | python3 -m json.tool
+```
+
+### 8.4 Agent-Watcher pruefen
+
+```bash
+# Logs (Login + Agent Detection)
+docker logs cct-agent-watcher --tail 20 2>&1
+
+# Erwartung: "Dify login successful" + "Healthcheck OK — 23 agents, Mem0 ✅"
+# Telegram Bot Test:
+curl -s "https://api.telegram.org/bot8718856271:AAHKkOplIj0bgZ3sGa15cLfEbzoSMzpHj4o/sendMessage" \
+  -d "chat_id=8747456067&text=Runbook Test"
+```
+
+### 8.5 OpenMemory Dashboard (T23 — geplant)
+
+Self-hosted UI als Ersatz fuer app.mem0.ai Dashboard.
+
+```bash
+# Nach Deployment:
+# Frontend: http://localhost:3030
+# Verbindungen: Mem0 API (8002), Qdrant (16333), Neo4j (7687)
+
+cd /opt/cloud-code/mem0-local
+docker compose -f docker-compose.mem0.yml ps  # openmemory-ui sollte Up sein
+curl -s http://localhost:3030/health           # Dashboard Health
+```
+
+**Schritte zum Deployen (wenn T23 umgesetzt wird):**
+1. OpenMemory aus `mem0ai/mem0` Repo clonen
+2. Service in `docker-compose.mem0.yml` ergaenzen
+3. Frontend ENV: `MEM0_API_URL=http://cct-mem0:8002`
+4. Port 3030 mappen
+5. `docker compose -f docker-compose.mem0.yml up -d`
+✅ Sektion 8 in RUNBOOK.md eingetragen cat
+✅ Sektion 8 in RUNBOOK.md eingetragen cat
