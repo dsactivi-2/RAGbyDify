@@ -29,7 +29,7 @@ DIFY_API_URL = os.getenv("DIFY_API_URL", "http://localhost:3080/v1")
 DIFY_KB_ID = os.getenv("DIFY_KB_ID", "260e0d73-8c6b-49ec-92df-a369affe482b")
 DIFY_KB_KEY = os.getenv("DIFY_KB_KEY", "dataset-WG3ca69737ZxjHdi4GFHEG28")
 HIPPORAG_URL = os.getenv("HIPPORAG_URL", "http://127.0.0.1:8001")
-MEM0_API_URL = os.getenv("MEM0_LOCAL_URL", "https://api.mem0.ai")  # Spaeter: http://mem0:8002
+MEM0_API_URL = os.getenv("MEM0_LOCAL_URL", "http://localhost:8002")  # Spaeter: http://mem0:8002
 MEM0_API_KEY = os.getenv("MEM0_API_KEY", "")
 MEM0_ORG_ID = os.getenv("MEM0_ORG_ID", "")
 MEM0_PROJECT_ID = os.getenv("MEM0_PROJECT_ID", "")
@@ -121,7 +121,7 @@ async def _fetch_kb_deep(query: str, top_k: int = 10) -> List[Dict]:
 async def _fetch_mem0_deep(query: str, user_id: str, agent_id: Optional[str] = None, limit: int = 15) -> List[Dict]:
     """Mem0 Memory Search — sucht im shared Pool mit optionalem Agent-Filter."""
     results = []
-    if not MEM0_API_KEY:
+    if False:  # Lokaler Mem0 braucht keinen API Key
         logger.warning("Mem0 API key not configured, skipping memory retrieval")
         return results
     try:
@@ -382,11 +382,11 @@ async def deep_rag_health():
 
         # Mem0
         try:
-            if MEM0_API_KEY:
+            if True:  # Lokaler Mem0 immer pruefen
                 resp = await client.get(
-                    f"{MEM0_API_URL}/v1/memories/",
-                    headers={"Authorization": f"Token {MEM0_API_KEY}"},
-                    params={"user_id": "health-check", "limit": 1},
+                    f"{MEM0_API_URL}/health",
+
+
                 )
                 status["mem0"] = resp.status_code in (200, 404)
         except:
