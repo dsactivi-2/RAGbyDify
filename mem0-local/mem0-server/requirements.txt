@@ -1,0 +1,10 @@
+mem0ai[graph]>=0.1.29
+ollama
+langchain-neo4j
+rank-bm25
+fastapi
+uvicorn[standard]
+qdrant-client
+neo4j
+httpx
+pydantic
