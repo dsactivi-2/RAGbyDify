@@ -14,6 +14,7 @@ import json
 import time
 import os
 import logging
+import base64
 from datetime import datetime
 
 # ──────────────────────────────────────────
@@ -82,14 +83,17 @@ class DifyClient:
         self.logged_in = False
 
     def login(self):
-        """Login bei Dify Console"""
+        """Login bei Dify Console (Dify v1.13+ erwartet Base64-encoded Passwort)"""
         try:
+            # Dify v1.13 erwartet Base64-encoded Passwort
+            encoded_password = base64.b64encode(DIFY_PASSWORD.encode()).decode()
             r = self.session.post(f"{DIFY_URL}/console/api/login", json={
                 "email": DIFY_EMAIL,
-                "password": DIFY_PASSWORD,
+                "password": encoded_password,
+                "remember_me": True,
             }, timeout=10)
             if r.status_code == 200:
-                # CSRF Token extrahieren
+                # CSRF Token aus Cookies extrahieren
                 for cookie in self.session.cookies:
                     if cookie.name == "csrf_token":
                         self.csrf_token = cookie.value
@@ -97,38 +101,60 @@ class DifyClient:
                 logger.info("✅ Dify login successful")
                 return True
             else:
-                logger.error("❌ Dify login failed: %s", r.status_code)
+                self.logged_in = False
+                logger.error("❌ Dify login failed: %s — %s", r.status_code, r.text[:200])
                 return False
         except Exception as e:
+            self.logged_in = False
             logger.error("❌ Dify login error: %s", e)
             return False
 
-    def get_apps(self):
-        """Alle Apps/Agents auflisten"""
-        if not self.logged_in:
-            self.login()
+    def _get_headers(self):
+        """Standard-Headers mit CSRF-Token"""
         headers = {}
         if self.csrf_token:
             headers["X-CSRF-Token"] = self.csrf_token
+        return headers
+
+    def _ensure_logged_in(self):
+        """Login falls nötig, max 1 Retry"""
+        if not self.logged_in:
+            return self.login()
+        return True
+
+    def get_apps(self):
+        """Alle Apps/Agents auflisten"""
+        if not self._ensure_logged_in():
+            return []
         try:
             r = self.session.get(f"{DIFY_URL}/console/api/apps?page=1&limit=100",
-                                 headers=headers, timeout=15)
+                                 headers=self._get_headers(), timeout=15)
             if r.status_code == 401:
-                self.login()
-                return self.get_apps()
-            return r.json().get("data", [])
+                # Token abgelaufen → einmal re-login, kein Rekursions-Loop
+                self.logged_in = False
+                if not self.login():
+                    return []
+                r = self.session.get(f"{DIFY_URL}/console/api/apps?page=1&limit=100",
+                                     headers=self._get_headers(), timeout=15)
+            if r.status_code == 200:
+                return r.json().get("data", [])
+            logger.error("Error fetching apps: HTTP %s", r.status_code)
+            return []
         except Exception as e:
             logger.error("Error fetching apps: %s", e)
             return []
 
     def get_workflow(self, app_id):
         """Workflow eines Agents holen"""
-        headers = {}
-        if self.csrf_token:
-            headers["X-CSRF-Token"] = self.csrf_token
         try:
             r = self.session.get(f"{DIFY_URL}/console/api/apps/{app_id}/workflows/draft",
-                                 headers=headers, timeout=15)
+                                 headers=self._get_headers(), timeout=15)
+            if r.status_code == 401:
+                self.logged_in = False
+                if not self.login():
+                    return None
+                r = self.session.get(f"{DIFY_URL}/console/api/apps/{app_id}/workflows/draft",
+                                     headers=self._get_headers(), timeout=15)
             if r.status_code == 200:
                 return r.json()
             return None
