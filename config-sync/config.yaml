@@ -81,8 +81,11 @@ llm:
     api_key: ""
 
 embedding:
+  # Dify nutzt text-embedding-3-small (1536d) fuer KB
+  # Mem0 nutzt qwen3-embedding (4096d) fuer Memory — siehe mem0.embedder_model
   model: "text-embedding-3-small"
-  dimension: 1536
+  dimension: 1536                          # Dify KB Embedding
+  mem0_dimension: 4096                     # Mem0 Qdrant (qwen3-embedding)
 
 # ──────────────────────────────────────────
 # PHASE 1: VECTOR DATABASE
@@ -131,7 +134,7 @@ mem0:
 
   # Graph Memory (Pro-Feature, lokal gratis!)
   graph_enabled: true
-  graph_database: "mem0"                   # Eigene Neo4j DB für Mem0
+  graph_database: "neo4j"                   # Neo4j Community Edition: nur default DB "neo4j"
 
 # Agent Watcher (Monitoring Service)
 agent_watcher:
@@ -174,8 +177,8 @@ celery:
 neo4j:
   uri: "bolt://neo4j:7687"
   user: "neo4j"
-  password: "bd6a6b0f3a42f7b9a215ea9beffdc9ea"
-  database: "cloudcode"
+  password: "22e58741703f24f1913550c9a8a51c99"
+  database: "neo4j"                        # Community Edition: nur default DB
   http_port: 7474
   bolt_port: 7687
 

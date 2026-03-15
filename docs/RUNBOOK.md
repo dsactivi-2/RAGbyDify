@@ -4,11 +4,13 @@ Arbeitsanweisung fuer Claude Code / Codex als operativer Agent.
 
 **Ziel:** Dieses Runbook so abarbeiten, dass am Ende alle P1-Aufgaben erledigt sind und das System produktionsbereit laeuft.
 
+**Stand:** 2026-03-15 — Mem0 Lokal, 9 Workflow-Module, Agent-Watcher aktiv
+
 ---
 
 ## 1. Betriebsmodus und Guardrails
 
-- **Kanonischer Startweg:** Nur `systemctl restart cloud-code-orchestrator` verwenden
+- **Kanonischer Startweg:** `systemctl restart orchestrator` (Service-Name: `orchestrator`)
 - **Backup vor jeder Aenderung:** `bash backup.sh` ausfuehren und Pfad dokumentieren
 - **Keine Blind-Fixes:** Kernlogik (main.py, rag_middleware.py) nur bei reproduzierbarem Fehler aendern
 - **Nach jeder Aenderung:** Syntax-Check + Health-Check + Test (siehe Schritt E)
@@ -22,12 +24,16 @@ Arbeitsanweisung fuer Claude Code / Codex als operativer Agent.
 
 ```bash
 # Systemd Services pruefen
-systemctl status cloud-code-orchestrator
-systemctl status cloud-code-hipporag
-systemctl status cloud-code-telegram
+systemctl status orchestrator        # FastAPI Orchestrator v3 (Port 8000)
+systemctl status cloud-code-hipporag # HippoRAG (Port 8001)
+systemctl status cloud-code-telegram # Telegram Bot
+
+# Docker Container pruefen
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "cct-|neo4j|qdrant"
+# Erwartung: cct-mem0, cct-mem0-qdrant, cct-agent-watcher, neo4j — alle Up
 
 # Aktuelle Logs
-journalctl -u cloud-code-orchestrator --since "1 hour ago" --no-pager | tail -50
+journalctl -u orchestrator --since "1 hour ago" --no-pager | tail -50
 ```
 
 ### Schritt B: Health pruefen
@@ -36,8 +42,15 @@ journalctl -u cloud-code-orchestrator --since "1 hour ago" --no-pager | tail -50
 # Orchestrator
 curl -s http://127.0.0.1:8000/health | python3 -m json.tool
 
-# RAG + Memory
-curl -s http://127.0.0.1:8000/rag/health | python3 -m json.tool
+# RAG + Memory (Deep-RAG Triple Source)
+curl -s http://127.0.0.1:8000/workflow/deep-rag/health | python3 -m json.tool
+# Erwartung: kb=true, mem0=true, hipporag=true
+
+# Mem0 Server (Lokal)
+curl -s http://localhost:8002/health | python3 -m json.tool
+
+# Mem0 Stats
+curl -s http://localhost:8002/v1/stats/ | python3 -m json.tool
 
 # HippoRAG
 curl -s http://127.0.0.1:8001/health | python3 -m json.tool
@@ -49,7 +62,7 @@ curl -s http://127.0.0.1:8000/config/agents | python3 -m json.tool
 **Erwartung:** Alle Endpoints antworten mit Status 200.
 **Bei Fehler:** Logs pruefen (Schritt A), dann gezielt reparieren.
 
-### Schritt C: Einen Agent testen
+### Schritt C: Workflow-Endpoints testen
 
 ```bash
 # Worker-Agent mit einfacher Frage testen
@@ -63,9 +76,15 @@ curl -s -X POST http://127.0.0.1:8000/route \
   -H "Content-Type: application/json" \
   -d '{"query": "Erstelle einen Deployment-Plan", "user": "test"}' \
   | python3 -m json.tool
+
+# Workflow-Module pruefen (22 Endpoints)
+for ep in chain smart-route code review debug security docs plan deep-rag; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/workflow/$ep/health 2>/dev/null)
+  echo "$ep: $STATUS"
+done
 ```
 
-**Erwartung:** `answer` ist nicht leer, `conversation_id` vorhanden.
+**Erwartung:** `answer` ist nicht leer, `conversation_id` vorhanden, alle Workflow-Endpoints 200.
 **Bei leerer Antwort:** OpenRouter-Bug (T02) — Streaming-Workaround pruefen.
 
 ### Schritt D: P1-Aufgaben abarbeiten
@@ -100,7 +119,7 @@ for agent, cfg in data.get('agents', {}).items():
 # In Dify Admin: Settings > API Keys > Dataset API Key kopieren
 # In .env eintragen: DIFY_KB_KEY=<echter-key>
 # Testen:
-curl -s http://127.0.0.1:8000/rag/health | python3 -m json.tool
+curl -s http://127.0.0.1:8000/workflow/deep-rag/health | python3 -m json.tool
 # kb sollte true sein
 ```
 
@@ -113,13 +132,16 @@ python3 -m py_compile rag_middleware.py
 python3 -m py_compile telegram_bot.py
 
 # Service neu starten
-systemctl restart cloud-code-orchestrator
+systemctl restart orchestrator
 
-# Health pruefen (10 Sekunden warten fuer Startup)
+# Health pruefen (3 Sekunden warten fuer Startup)
 sleep 3 && curl -s http://127.0.0.1:8000/health | python3 -m json.tool
 
-# RAG pruefen
-curl -s http://127.0.0.1:8000/rag/health | python3 -m json.tool
+# Deep-RAG pruefen (alle 3 Quellen)
+curl -s http://127.0.0.1:8000/workflow/deep-rag/health | python3 -m json.tool
+
+# Mem0 pruefen
+curl -s http://localhost:8002/health | python3 -m json.tool
 
 # Einen Agent testen
 curl -s -X POST http://127.0.0.1:8000/task \
@@ -136,11 +158,6 @@ Nach jedem Fix eine Zeile in folgendem Format:
 FIX: [Datei] [Was] [Warum] [Test-Ergebnis] [Restrisiko]
 ```
 
-Beispiel:
-```
-FIX: telegram_bot.py | API-Keys externalisiert | Security (T01) | Health OK, Bot antwortet | Git-History noch unsauber (T15)
-```
-
 ---
 
 ## 3. Prioritaetenmatrix
@@ -150,9 +167,11 @@ FIX: telegram_bot.py | API-Keys externalisiert | Security (T01) | Health OK, Bot
 | P1 | /health | Muss 200 sein | Logs + ENV pruefen |
 | P1 | /task (worker) | Muss Antwort liefern | Dify API Key + Streaming pruefen |
 | P1 | API-Keys im Code | Muss raus | T01 abarbeiten |
-| P2 | /rag/health | KB + HippoRAG true | DIFY_KB_KEY + Neo4j pruefen |
+| P2 | deep-rag/health | kb+mem0+hipporag true | KB-Key, Mem0 Container, Neo4j pruefen |
+| P2 | Mem0 Server | Muss healthy sein | `docker restart cct-mem0` bei Haenger |
 | P2 | Telegram Bot | Muss antworten | systemd Status + Logs |
-| P3 | /feedback | Mem0 Speicherung | API-Key + Netzwerk pruefen |
+| P2 | Agent-Watcher | Muss Alerts senden | `docker logs cct-agent-watcher` |
+| P3 | /feedback | Mem0 Speicherung | Mem0 Health pruefen |
 | P3 | Load Testing | Ungetestet | locustfile.py ausfuehren |
 
 ---
@@ -161,20 +180,24 @@ FIX: telegram_bot.py | API-Keys externalisiert | Security (T01) | Health OK, Bot
 
 | Bereich | Status | Nachweis | Bei Regression |
 |---------|--------|---------|----------------|
-| Orchestrator API | Erwartet: Gruen | /health = 200 | uvicorn Logs + Port 8000 |
-| Agent Routing | Erwartet: Gruen | /route liefert Antwort | AGENT_KEYS ENV pruefen |
-| RAG Middleware | Erwartet: Gruen | /rag/health alle true | KB-Key, HippoRAG, SQLite |
-| Knowledge Graph | Erwartet: Gruen | /hipporag/health OK | Neo4j Container + Port 8001 |
-| Telegram Bot | Erwartet: Gruen | Bot antwortet auf /start | TELEGRAM_TOKEN + Dify Key |
-| Core Memory | Erwartet: Gruen | /memory/system liefert Daten | SQLite DB Pfad pruefen |
-| Self-Learning | Erwartet: Gelb | /feedback speichert | Mem0 API Key + Cloud |
+| Orchestrator API | ✅ Gruen | /health = 200 | uvicorn Logs + Port 8000 |
+| Agent Routing | ✅ Gruen | /route liefert Antwort | AGENT_KEYS ENV pruefen |
+| 9 Workflow-Module | ✅ Gruen | 22/22 Endpoints OK | /workflow/{name}/health pruefen |
+| RAG Middleware | ✅ Gruen | deep-rag: alle 3 true | KB-Key, Mem0, HippoRAG pruefen |
+| Knowledge Graph | ✅ Gruen | /hipporag/health OK | Neo4j Container + Port 8001 |
+| Mem0 Lokal | ✅ Gruen | /health + 9 Vektoren | `docker restart cct-mem0` bei Haenger |
+| Agent-Watcher | ✅ Gruen | 23 Agents detected | `docker logs cct-agent-watcher` |
+| Telegram Bot | ✅ Gruen | Bot antwortet, Alerts aktiv | TELEGRAM_TOKEN + Dify Key |
+| Core Memory | ✅ Gruen | /memory/system liefert Daten | SQLite DB Pfad pruefen |
+| Self-Learning | Gelb | Mem0 speichert lokal | Worker-Hang bei langen Calls |
 
 ---
 
 ## 5. Dateien die NICHT geaendert werden duerfen (ohne Review)
 
-- `orchestrator/main.py` — Kern des Systems, 698 Zeilen
+- `orchestrator/main.py` — Kern des Systems
 - `rag_middleware.py` — RAG-Pipeline, von allen Clients genutzt
+- `mem0-local/mem0-server/server.py` — Mem0 API Server
 - `plugins/cloud-code-orchestrator/manifest.yaml` — Dify Plugin Definition
 
 ---
@@ -186,10 +209,13 @@ FIX: telegram_bot.py | API-Keys externalisiert | Security (T01) | Health OK, Bot
 - [ ] Alle API-Keys in .env, keine im Code
 - [ ] Syntax-Check gruen fuer alle .py Dateien
 - [ ] /health = 200
-- [ ] /rag/health: kb=true, hipporag=true, core_memory=true
+- [ ] deep-rag/health: kb=true, mem0=true, hipporag=true
+- [ ] Mem0 healthy: `curl http://localhost:8002/health`
+- [ ] Alle 22 Workflow-Endpoints erreichbar
 - [ ] /task mit worker Agent liefert Antwort
 - [ ] /route liefert Antwort mit routing_reason
 - [ ] Telegram Bot antwortet auf /start
+- [ ] Agent-Watcher laeuft: `docker logs cct-agent-watcher`
 - [ ] Git-Status sauber, alle Aenderungen committed
 
 ---
@@ -202,19 +228,23 @@ cd /opt/cloud-code
 ls -la backups/  # Letztes Backup finden
 
 # Service stoppen
-systemctl stop cloud-code-orchestrator
+systemctl stop orchestrator
 
 # Dateien zurueckkopieren
 cp backups/YYYY-MM-DD/orchestrator/main.py orchestrator/main.py
 cp backups/YYYY-MM-DD/rag_middleware.py rag_middleware.py
 
 # Service starten
-systemctl start cloud-code-orchestrator
+systemctl start orchestrator
 
 # Health pruefen
 sleep 3 && curl -s http://127.0.0.1:8000/health
-```
 
+# Mem0 Stack Rollback (wenn noetig)
+cd /opt/cloud-code/mem0-local
+docker compose -f docker-compose.mem0.yml down
+docker compose -f docker-compose.mem0.yml up -d
+```
 
 ---
 
@@ -229,7 +259,7 @@ curl -s http://localhost:8002/health | python3 -m json.tool
 # Mem0 Stats
 curl -s http://localhost:8002/v1/stats/ | python3 -m json.tool
 
-# Mem0 Qdrant (separater Container\!)
+# Mem0 Qdrant (separater Container, Port 16333 extern)
 curl -s http://localhost:16333/collections | python3 -m json.tool
 
 # Deep-RAG (alle 3 Quellen)
@@ -268,7 +298,7 @@ Bei Timeout → `docker restart cct-mem0` loest das Problem.
 # Suche
 curl -s -X POST http://localhost:8002/v1/memories/search/ \
   -H "Content-Type: application/json" \
-  -d query:Denis | python3 -m json.tool
+  -d '{"query": "Denis", "user_id": "cloud-code-team"}' | python3 -m json.tool
 
 # Alle Memories auflisten
 curl -s "http://localhost:8002/v1/memories/?user_id=cloud-code-team" | python3 -m json.tool
@@ -309,5 +339,3 @@ curl -s http://localhost:3030/health           # Dashboard Health
 3. Frontend ENV: `MEM0_API_URL=http://cct-mem0:8002`
 4. Port 3030 mappen
 5. `docker compose -f docker-compose.mem0.yml up -d`
-✅ Sektion 8 in RUNBOOK.md eingetragen cat
-✅ Sektion 8 in RUNBOOK.md eingetragen cat
