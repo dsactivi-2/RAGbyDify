@@ -28,7 +28,7 @@ Es besteht aus 11 spezialisierten Agents + 1 Memory Agent (12 gesamt), die ueber
 Alle LLM-Modelle laufen via Ollama Cloud (0 GB lokal, geroutet ueber Ollama API Key).
 OpenRouter steht als Fallback-Infrastruktur bereit (API-Key noch nicht gesetzt).
 
-### Tier 1 - Code (qwen3-coder-next:cloud, ~5s)
+### Tier 1 - Code (qwen3-coder-next:cloud, ~0.7s)
 Spezialisiert auf Code-Generierung und technische Aufgaben.
 | Agent | Temperatur |
 |-------|------------|
@@ -36,7 +36,7 @@ Spezialisiert auf Code-Generierung und technische Aufgaben.
 | DevOps | 0.3 |
 | Tester | 0.2 |
 
-### Tier 2 - Reasoning (deepseek-v3.2:cloud, ~3s)
+### Tier 2 - Reasoning (deepseek-v3.2:cloud, ~2.2s)
 Spezialisiert auf Analyse, Architektur und Sicherheit.
 | Agent | Temperatur |
 |-------|------------|
@@ -45,7 +45,7 @@ Spezialisiert auf Analyse, Architektur und Sicherheit.
 | Reviewer | 0.3 |
 | Debug | 0.3 |
 
-### Tier 3 - General (minimax-m2.5:cloud, ~0.7s)
+### Tier 3 - General (minimax-m2.5:cloud, ~1.3s)
 Schnellstes Modell fuer allgemeine Aufgaben und Kommunikation.
 | Agent | Temperatur |
 |-------|------------|
@@ -54,7 +54,7 @@ Schnellstes Modell fuer allgemeine Aufgaben und Kommunikation.
 | Docs | 0.4 |
 | Worker | 0.5 |
 
-### Tier 4 - Memory (minimax-m2.5:cloud, ~0.7s)
+### Tier 4 - Memory (minimax-m2.5:cloud, ~1.3s)
 Optimiert fuer Memory-Operationen mit minimaler Kreativitaet.
 | Agent | Temperatur |
 |-------|------------|

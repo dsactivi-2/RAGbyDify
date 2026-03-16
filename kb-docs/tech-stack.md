@@ -17,17 +17,17 @@ Ollama Cloud API Key konfiguriert in /etc/systemd/system/ollama.service (Environ
 ### Cloud-Modelle (0 GB lokal, via Ollama Cloud geroutet)
 | Modell | Tier | Agents | Benchmark-Latenz |
 |--------|------|--------|-----------------|
-| qwen3-coder-next:cloud | Tier 1 Code | Coder, DevOps, Tester | ~5s |
-| deepseek-v3.2:cloud | Tier 2 Reasoning | Architect, Security, Reviewer, Debug | ~3s |
-| minimax-m2.5:cloud | Tier 3 General | Coach, Planner, Docs, Worker | ~0.7s |
-| minimax-m2.5:cloud | Tier 4 Memory | Memory | ~0.7s |
+| qwen3-coder-next:cloud | Tier 1 Code | Coder, DevOps, Tester | ~0.7s |
+| deepseek-v3.2:cloud | Tier 2 Reasoning | Architect, Security, Reviewer, Debug | ~2.2s |
+| minimax-m2.5:cloud | Tier 3 General | Coach, Planner, Docs, Worker | ~1.3s |
+| minimax-m2.5:cloud | Tier 4 Memory | Memory | ~1.3s |
 | glm-4.7:cloud | Verfuegbar (Reserve) | - | ~4s |
 | glm-5:cloud | Verfuegbar (Reserve) | - | nicht getestet |
 
 ### Lokale Modelle (auf dem Server gespeichert)
 | Modell | Groesse | Zweck |
 |--------|---------|-------|
-| qwen3-embedding:latest | 4.36 GB | Primaeres Embedding fuer KB + Mem0 (4096 Dim.) |
+| qwen3-embedding:latest | 4.7 GB | Primaeres Embedding fuer KB + Mem0 (4096 Dim.) |
 | qwen3-embedding:0.6b | 639 MB | Alternatives kleines Embedding |
 | nomic-embed-text:latest | 274 MB | Alternatives Embedding (768 Dim., fuer kuenftiges Speed-Upgrade) |
 

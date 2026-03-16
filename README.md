@@ -17,12 +17,12 @@ KI-Multi-Agent-System basierend auf Dify v1.13.0 (Self-Hosted) mit 12 spezialisi
 
 | Tier | Modell | Latenz | Agents |
 |------|--------|--------|--------|
-| Tier 1 Code | qwen3-coder-next:cloud | ~5s | Coder, DevOps, Tester |
-| Tier 2 Reasoning | deepseek-v3.2:cloud | ~3s | Architect, Security, Reviewer, Debug |
-| Tier 3 General | minimax-m2.5:cloud | ~0.7s | Coach, Planner, Docs, Worker |
-| Tier 4 Memory | minimax-m2.5:cloud | ~0.7s | Memory |
+| Tier 1 Code | qwen3-coder-next:cloud | ~0.7s | Coder, DevOps, Tester |
+| Tier 2 Reasoning | deepseek-v3.2:cloud | ~2.2s | Architect, Security, Reviewer, Debug |
+| Tier 3 General | minimax-m2.5:cloud | ~1.3s | Coach, Planner, Docs, Worker |
+| Tier 4 Memory | minimax-m2.5:cloud | ~1.3s | Memory |
 
-**Embedding:** qwen3-embedding:latest (4096 Dim., lokal auf Ollama, 4.36 GB)
+**Embedding:** qwen3-embedding:latest (4096 Dim., lokal auf Ollama, 4.7 GB)
 
 ## Phasen-Status
 
@@ -203,4 +203,4 @@ Alle Secrets in `/opt/cloud-code/orchestrator/.env` (22 Eintraege):
 Highlights: llama-index 0.14.16 (23 Subpackages), langchain 1.2.12, langfuse 4.0.0, mem0ai 1.0.5, chainlit 2.10.0, openai 2.26.0, anthropic 0.85.0, fastembed 0.7.4, FlagEmbedding 1.3.5, sentence-transformers 5.3.0, qdrant-client 1.17.1, neo4j 5.28.3
 
 ---
-**Version:** 3.2.0 | **Stand:** 16.03.2026 | **Repository:** https://github.com/dsactivi-2/RAGbyDify
+**Version:** 3.0.0 | **Stand:** 16.03.2026 | **Repository:** https://github.com/dsactivi-2/RAGbyDify
