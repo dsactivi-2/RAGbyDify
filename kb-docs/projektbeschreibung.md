@@ -1,108 +1,114 @@
 # Cloud Code Team - Projektbeschreibung
 
-## Überblick
+Stand: 16.03.2026
+
+## Ueberblick
 Das Cloud Code Team ist ein KI-Multi-Agent-System basierend auf Dify v1.13.0 (Self-Hosted).
-Es besteht aus 11 spezialisierten Agents + 1 Memory Agent (12 gesamt), die über einen FastAPI Orchestrator (v3.0) koordiniert werden.
+Es besteht aus 11 spezialisierten Agents + 1 Memory Agent (12 gesamt), die ueber einen FastAPI Orchestrator (v3.0) koordiniert werden.
 
 ## Architektur
 - **Plattform:** Dify v1.13.0 Self-Hosted auf Hetzner CCX33
 - **Server:** 8 vCPU Dedicated, 32 GB RAM, 240 GB SSD, Ubuntu 22.04
 - **IP:** 178.104.51.123
 - **Domain:** difyv2.activi.io (Caddy v2 SSL + HSTS)
-- **LLM-Strategie:** 3-Tier Open Source Model Stack (alle via Ollama Cloud)
-- **Ollama:** v0.17.7 (lokal als systemd Service auf 0.0.0.0:11434)
-- **Memory:** Mem0 Plugin v0.0.2 (Cloud API)
-- **Orchestrator:** FastAPI v3.0 Streaming-Modus (Port 8000, systemd)
-- **RAG Middleware:** Zentrales Modul für KB + HippoRAG + Memory + Anti-Halluzination
-- **Knowledge Graph:** Neo4j 5.26.22 Community Edition + HippoRAG (Port 8001, systemd)
-- **Vektoren:** Qdrant (in Dify Docker)
-- **Cache:** Redis (in Dify Docker)
-- **Recall:** sqlite-vec (/opt/cloud-code/recall_memory.db)
-- **Core Memory:** SQLite (/opt/cloud-code/core_memory.db)
-- **Embedding:** Qwen3-Embedding-8B (4096 Dimensionen, LOKAL auf Ollama, 4.36 GB)
-- **Telegram Bot:** A.AI Coach v3 (aktiv, systemd Service aai-coach-telegram.service)
+- **LLM-Strategie:** 4-Tier Open Source Model Stack (alle via Ollama Cloud)
+- **Ollama:** v0.17.7 (lokal als systemd Service, Cloud API Key konfiguriert)
+- **Memory:** Mem0 Lokal (Port 8002, Docker, Graph=true)
+- **Orchestrator:** FastAPI v3.0 (Port 8000, 1317 Zeilen main.py, systemd Service)
+- **RAG Middleware:** KB + HippoRAG + Mem0 + Anti-Halluzination
+- **Knowledge Graph:** Neo4j 5.26.22 + HippoRAG (Port 8001, systemd Service)
+- **Vektoren:** Qdrant (Dify Docker + cct-mem0-qdrant Port 16333)
+- **Tracing:** Langfuse v4 (cloud.langfuse.com)
+- **Embedding:** Qwen3-Embedding (4096 Dim., LOKAL auf Ollama)
+- **Telegram Bot:** A.AI Coach v3 (systemd Service)
+- **Chainlit:** v2.10.0 (installiert fuer Hybrid Retrieval Testing)
 
-## Ollama Architektur (Wichtig!)
-Ollama v0.17.7 läuft LOKAL auf dem Server als systemd Service.
-- **LLM-Modelle (Cloud):** minimax-m2.5:cloud, glm-4.7:cloud, deepseek-v3.2:cloud → 0 GB lokal, routing via Ollama Cloud
-- **Embedding (Lokal):** qwen3-embedding:latest → 4.36 GB lokal auf dem Server
-- **Weitere lokale Modelle:** qwen3-embedding:0.6b (639 MB), nomic-embed-text:latest (274 MB)
-- **Docker-Zugang:** Container erreichen Ollama über docker0 Bridge IP 172.17.0.1:11434
+## 4-Tier Open Source Model Stack (Ollama Cloud)
 
-## 3-Tier Open Source Model Stack
+Alle LLM-Modelle laufen via Ollama Cloud (0 GB lokal, geroutet ueber Ollama API Key).
+OpenRouter steht als Fallback-Infrastruktur bereit (API-Key noch nicht gesetzt).
 
-### Tier 1 - Code (MiniMax-M2.5)
-Spezialisiert auf Code-Generierung, Architektur und technische Aufgaben.
-| Agent | Modell | Temperatur |
-|-------|--------|------------|
-| Architect | minimax-m2.5:cloud | 0.3 |
-| Coder | minimax-m2.5:cloud | 0.2 |
-| DevOps | minimax-m2.5:cloud | 0.3 |
-| Tester | minimax-m2.5:cloud | 0.2 |
+### Tier 1 - Code (qwen3-coder-next:cloud, ~5s)
+Spezialisiert auf Code-Generierung und technische Aufgaben.
+| Agent | Temperatur |
+|-------|------------|
+| Coder | 0.2 |
+| DevOps | 0.3 |
+| Tester | 0.2 |
 
-### Tier 2 - Multilingual (GLM-4.7)
-Spezialisiert auf mehrsprachige Kommunikation, Planung und Reviews.
-| Agent | Modell | Temperatur |
-|-------|--------|------------|
-| Planner | glm-4.7:cloud | 0.4 |
-| Docs | glm-4.7:cloud | 0.4 |
-| Worker | glm-4.7:cloud | 0.5 |
-| Reviewer | glm-4.7:cloud | 0.3 |
-| Security | glm-4.7:cloud | 0.2 |
-| Debug | glm-4.7:cloud | 0.3 |
-| Coach | glm-4.7:cloud | 0.5 |
+### Tier 2 - Reasoning (deepseek-v3.2:cloud, ~3s)
+Spezialisiert auf Analyse, Architektur und Sicherheit.
+| Agent | Temperatur |
+|-------|------------|
+| Architect | 0.3 |
+| Security | 0.2 |
+| Reviewer | 0.3 |
+| Debug | 0.3 |
 
-### Tier 3 - Günstig (DeepSeek V3.2)
-Optimiert für Memory-Operationen mit minimaler Kreativität.
-| Agent | Modell | Temperatur |
-|-------|--------|------------|
-| Memory | deepseek-v3.2:cloud | 0.1 |
+### Tier 3 - General (minimax-m2.5:cloud, ~0.7s)
+Schnellstes Modell fuer allgemeine Aufgaben und Kommunikation.
+| Agent | Temperatur |
+|-------|------------|
+| Coach | 0.5 |
+| Planner | 0.4 |
+| Docs | 0.4 |
+| Worker | 0.5 |
+
+### Tier 4 - Memory (minimax-m2.5:cloud, ~0.7s)
+Optimiert fuer Memory-Operationen mit minimaler Kreativitaet.
+| Agent | Temperatur |
+|-------|------------|
+| Memory | 0.1 |
 
 ## 12 Agents
-1. **Architect** - System-Architektur, Design-Entscheidungen (Tier 1)
-2. **Coder** - Code-Entwicklung, Implementation (Tier 1)
-3. **Tester** - Testing, QA, Testfälle (Tier 1)
-4. **DevOps** - Infrastructure, CI/CD, Deployment (Tier 1)
-5. **Reviewer** - Code-Reviews, Best Practices (Tier 2)
-6. **Docs** - Dokumentation, README, API-Docs (Tier 2)
-7. **Security** - Sicherheit, Audits, Härtung (Tier 2)
-8. **Planner** - Projektplanung, Sprint-Management (Tier 2)
-9. **Debug** - Debugging, Fehleranalyse (Tier 2)
-10. **Worker** - Allgemeine Aufgaben, Support (Tier 2)
-11. **Coach** - Coaching, Mentoring, Teamführung (Tier 2)
-12. **Memory** - Kontextgedächtnis, Erinnerungen (Tier 3)
+1. **Coder** - Code-Entwicklung, Implementation (Tier 1)
+2. **DevOps** - Infrastructure, CI/CD, Deployment (Tier 1)
+3. **Tester** - Testing, QA, Testfaelle (Tier 1)
+4. **Architect** - System-Architektur, Design-Entscheidungen (Tier 2)
+5. **Security** - Sicherheit, Audits, Haertung (Tier 2)
+6. **Reviewer** - Code-Reviews, Best Practices (Tier 2)
+7. **Debug** - Debugging, Fehleranalyse (Tier 2)
+8. **Coach** - Coaching, Mentoring, Teamfuehrung (Tier 3)
+9. **Planner** - Projektplanung, Sprint-Management (Tier 3)
+10. **Docs** - Dokumentation, README, API-Docs (Tier 3)
+11. **Worker** - Allgemeine Aufgaben, Support (Tier 3)
+12. **Memory** - Kontextgedaechtnis, Erinnerungen (Tier 4)
 
-## RAG Middleware (rag_middleware.py)
-Zentrales Modul das JEDE Agent-Anfrage anreichert mit:
+## RAG Middleware
+Jede Agent-Anfrage wird angereichert mit:
 1. **KB Context** - Dify Knowledge Base (semantische Suche, Top-K=5)
 2. **HippoRAG Context** - Knowledge Graph Beziehungen (Neo4j, Top-K=5)
-3. **User Memory** - Persistente Pro-User Fakten (JSON-Dateien)
+3. **Mem0 Dual-Search** - Eigene Memories [OWN:cct-{agent}] + Shared [SHARED:cloud-code-team]
 4. **Core Memory** - System-Variablen und Agent-Memories (SQLite)
 5. **Anti-Halluzination** - Automatische Regelinjection
-Wird von Orchestrator, Telegram Bot und zukünftigen Clients genutzt.
 
-## 17 Hook-Endpoints
-Der Orchestrator bietet 17 vorkonfigurierte Hook-Endpoints:
-save, recall, status, learn, format, review, test, deploy, explain, refactor, doc, plan, debug, optimize, security, summarize, fix
-Jeder Hook routet automatisch zum passenden Agent mit vordefinierten Prompt-Templates.
+## Chatflow-Architektur (Dify v2)
+Jeder Agent folgt diesem Chatflow:
+1. Start → Eingabe empfangen
+2. Memory abrufen (Mem0 Tool Call, ~12-15s)
+3. KB durchsuchen (Knowledge Retrieval, ~0.3s)
+4. LLM Anti-Halluzination (minimax-m2.5:cloud als Default, ~6-16s)
+5. Antwort (Answer Node)
+6. Memory speichern (Mem0 Tool Call, ~30s)
 
-## Self-Learning Pipeline
-- POST /feedback - Positives/negatives Feedback wird in Mem0 gespeichert
-- GET /learning/stats - Statistiken über gelernte Fehler und Verbesserungen
-- Namespace cct-errors für fehlerhafte Antworten (Anti-Wiederhol-Mechanismus)
+**Bekannter Bug:** Dify v1.13 Answer-Node Template {{#llm-main.text#}} wird nicht aufgeloest.
+Workaround: Orchestrator nutzt Streaming + extrahiert LLM-Output aus node_finished Events.
 
-## Auto-Routing
-POST /route analysiert die Anfrage per Keyword-Matching und routet automatisch zum besten Agent.
-10 Keyword-Sets (Deutsch) für: architect, coder, tester, reviewer, devops, docs, security, planner, debug, worker.
-Fallback: worker Agent.
+**Performance-Bottleneck:** Mem0 Tool Calls (Memory abrufen + speichern) verbrauchen ~45s der Gesamtzeit.
+LLM-Call selbst ist schnell (6-16s mit minimax-m2.5:cloud).
 
-## Telegram Bot (A.AI Coach v3)
-- Multilingual: EN/DE/BS mit per-User Spracheinstellung
-- Streaming-Modus mit Dify Chatflow Integration
-- Persistentes Memory: User-State + Pro-User Fakten überleben Restarts
-- Unterstützt Private + Gruppen-Chats
-- systemd Service: aai-coach-telegram.service (aktiv)
-- Nutzt Coach Agent API-Key und RAG Middleware
+## systemd Services (Reboot-sicher)
+Alle kritischen Services sind als systemd Services konfiguriert und enabled:
+- orchestrator.service (active, EnvironmentFile=.env)
+- hipporag.service (active)
+- neo4j.service (enabled, startet bei Reboot)
+- ollama.service (active)
+- caddy.service (active)
+- aai-coach-telegram.service (active)
+
+## Langfuse Tracing
+Alle LLM-Aufrufe (direkt via Ollama Cloud und via Dify) werden in Langfuse v4 getraced.
+Dashboard: cloud.langfuse.com
 
 ## Anti-Halluzinations-System
 Alle Agents folgen 5 Kernregeln:
@@ -113,8 +119,9 @@ Alle Agents folgen 5 Kernregeln:
 5. KONFIDENZ: [SICHER], [WAHRSCHEINLICH], [UNSICHER]
 
 ## Dify Konfiguration
-- **Default LLM:** glm-4.7:cloud (via Ollama)
+- **Default LLM:** minimax-m2.5:cloud (via Ollama, umgestellt 16.03.2026)
 - **Default Embedding:** qwen3-embedding:latest (via Ollama, lokal)
-- **Provider:** Ollama (primär), OpenRouter (Fallback, 95 Modelle), OpenAI (Fallback)
-- **Chatflow-Parameter:** Num Predict 8192 (per Checkbox aktiviert in Dify UI)
-- **Bekannter Bug:** Dify v1.13 Answer-Node Template-Resolution → Workaround: Streaming-Modus
+- **Provider:** Ollama (primaer), OpenRouter (Fallback-Infrastruktur), OpenAI (TTS/STT)
+
+## Installierte SDKs
+57+ AI-Pakete global installiert inkl. LlamaIndex 0.14.16 (23 Subpakete), LangChain 1.2.12, Chainlit 2.10.0, Mem0 1.0.5, Langfuse 4.0.0, FastEmbed, FlagEmbedding, Sentence-Transformers.

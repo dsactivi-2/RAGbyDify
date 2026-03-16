@@ -30,6 +30,26 @@ from typing import Optional
 
 import httpx
 
+# ──────── Hybrid Retriever (LlamaIndex upgrade) ────────
+USE_HYBRID_RETRIEVER = os.getenv("USE_HYBRID_RETRIEVER", "true").lower() == "true"
+_hybrid_retriever = None
+
+async def _get_hybrid_context(query: str, agent: str = None) -> str:
+    global _hybrid_retriever
+    if not USE_HYBRID_RETRIEVER:
+        return ""
+    try:
+        if _hybrid_retriever is None:
+            from hybrid_retriever import HybridRetriever
+            _hybrid_retriever = HybridRetriever()
+        results = await _hybrid_retriever.retrieve(query, agent=agent)
+        if results:
+            return _hybrid_retriever.format_context(results)
+    except Exception as e:
+        logger.warning(f"Hybrid retriever failed, falling back to legacy: {e}")
+    return ""
+
+
 logger = logging.getLogger("RAGMiddleware")
 
 # ──────── Configuration ────────
@@ -45,6 +65,14 @@ HIPPO_TOP_K = int(os.getenv("RAG_HIPPO_TOP_K", "5"))
 DATA_DIR = Path(os.getenv("RAG_DATA_DIR", "/opt/cloud-code/data"))
 MEMORY_DIR = DATA_DIR / "memories"
 CORE_MEMORY_DB = os.getenv("CORE_MEMORY_DB", "/opt/cloud-code/core_memory.db")
+# ──────── Memory Scope Configuration ────────
+# SHARED memory: project-level facts accessible to ALL agents
+SHARED_USER_ID = "cloud-code-team"
+# PRIVATE memory: per-agent facts (user_id = "cct-{agent}")
+# Access Policy:
+#   READ:  own (cct-{agent}) + shared (cloud-code-team) — merged, labeled
+#   WRITE: own (cct-{agent}) only — shared writes require explicit /memories/team endpoint
+
 
 # ──────── KB Retrieval ────────
 
@@ -255,6 +283,68 @@ def extract_facts_from_message(message: str) -> list:
     return facts
 
 
+
+
+# ──────── Mem0 Dual-Search (Own + Shared) ────────
+
+async def fetch_mem0_context(query: str, user_id: str, agent=None) -> str:
+    """
+    Dual-search: queries BOTH the agent-specific memory AND shared team memory.
+    Results are labeled with their source scope for transparency.
+
+    Memory Hierarchy:
+      1. Own agent memory (cct-{agent}) -- highest priority
+      2. Shared team memory (cloud-code-team) -- project context
+    """
+    own_id = f"cct-{agent}" if agent else user_id
+
+    async def _search_mem0(client, uid, label):
+        try:
+            resp = await client.post(
+                "http://localhost:8002/v1/memories/search/",
+                json={"query": query, "user_id": uid, "limit": 5},
+                timeout=10.0
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                # Mem0 search returns {"results": {"results": [...]}} - double nested
+                entries = data
+                if isinstance(entries, dict):
+                    inner = entries.get("results", entries)
+                    if isinstance(inner, dict):
+                        inner = inner.get("results", [])
+                    entries = inner
+                if isinstance(entries, list):
+                    return [(e.get("memory", ""), e.get("score", 0), label) for e in entries if isinstance(e, dict) and e.get("memory")]
+        except Exception as e:
+            logger.warning(f"Mem0 search failed for {uid}: {e}")
+        return []
+
+    results_own = []
+    results_shared = []
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            own_task = asyncio.create_task(_search_mem0(client, own_id, f"OWN:{own_id}"))
+            shared_task = asyncio.create_task(_search_mem0(client, SHARED_USER_ID, f"SHARED:{SHARED_USER_ID}"))
+            results_own = await own_task
+            results_shared = await shared_task
+    except Exception as e:
+        logger.warning(f"Mem0 dual-search error: {e}")
+
+    all_results = results_own + results_shared
+    if not all_results:
+        return ""
+
+    seen = set()
+    unique = []
+    for memory, score, label in all_results:
+        mem_key = memory.strip().lower()[:100]
+        if mem_key not in seen:
+            seen.add(mem_key)
+            unique.append(f"[{label}] {memory}")
+
+    return "\n".join(unique[:10])
+
 # ──────── Anti-Hallucination Header ────────
 
 ANTI_HALLUCINATION_HEADER = """== ANTI-HALLUZINATION REGELN (PFLICHT) ==
@@ -281,19 +371,29 @@ async def enrich_for_agent(
 
     This is the ONE function every client/agent should call.
     """
-    # Parallel fetch: KB + HippoRAG
-    kb_task = asyncio.create_task(fetch_kb(query))
-    hippo_task = asyncio.create_task(fetch_hipporag(query))
+    # ──────── Hybrid Retriever (primary) ────────
+    hybrid_context = ""
+    if USE_HYBRID_RETRIEVER:
+        hybrid_context = await _get_hybrid_context(query, agent)
 
-    kb_context = await kb_task
-    hippo_context = await hippo_task
+    # ──────── Legacy fallback if hybrid is off or returned nothing ────────
+    kb_context = ""
+    hippo_context = ""
+    mem0_context = ""
+    if not hybrid_context:
+        kb_task = asyncio.create_task(fetch_kb(query))
+        hippo_task = asyncio.create_task(fetch_hipporag(query))
+        kb_context = await kb_task
+        hippo_context = await hippo_task
+        mem0_task = asyncio.create_task(fetch_mem0_context(query, user_id, agent))
+        mem0_context = await mem0_task
 
-    # Synchronous: User Memory + Core Memory
+    # Synchronous: Legacy User Memory + Core Memory (always loaded)
     user_mem = get_user_memory_context(user_id)
     core_mem = get_core_memory_context(agent)
 
     # Build enriched query
-    has_context = any([kb_context, hippo_context, user_mem, core_mem])
+    has_context = any([hybrid_context, kb_context, hippo_context, user_mem, core_mem, mem0_context])
 
     if not has_context and not include_anti_hallucination:
         return query
@@ -303,8 +403,15 @@ async def enrich_for_agent(
     if include_anti_hallucination:
         parts.append(ANTI_HALLUCINATION_HEADER)
 
+    # Hybrid context (merged + reranked) takes priority
+    if hybrid_context:
+        parts.append(f"[HYBRID CONTEXT - Vector + Graph + Memory (reranked)]\n{hybrid_context}\n")
+
+    # Legacy sources as fallback
     if user_mem:
         parts.append(f"[USER MEMORY - Dinge die sich der User gemerkt hat]\n{user_mem}\n")
+    if mem0_context:
+        parts.append(f"[MEM0 MEMORY - Eigene + Team-Erinnerungen]\n{mem0_context}\n")
     if core_mem:
         parts.append(f"[CORE MEMORY - System-Variablen]\n{core_mem}\n")
     if kb_context:
@@ -315,10 +422,11 @@ async def enrich_for_agent(
     if has_context:
         parts.append("[END CONTEXT]")
 
+    mode = "HYBRID" if hybrid_context else "LEGACY"
     logger.info(
-        f"RAG enrichment for {agent or 'unknown'}: "
-        f"KB={bool(kb_context)}, HIPPO={bool(hippo_context)}, "
-        f"MEM={bool(user_mem)}, CORE={bool(core_mem)}"
+        f"RAG enrichment [{mode}] for {agent or 'unknown'}: "
+        f"HYBRID={bool(hybrid_context)}, KB={bool(kb_context)}, HIPPO={bool(hippo_context)}, "
+        f"MEM0={bool(mem0_context)}, LEGACY_MEM={bool(user_mem)}, CORE={bool(core_mem)}"
     )
 
     return "\n".join(parts)

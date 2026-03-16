@@ -12,10 +12,114 @@ import httpx
 import os
 import json
 import logging
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file
+
+# ──────── Langfuse LLM Tracing (v4 API) ────────
+try:
+    from langfuse import Langfuse
+    import uuid as _uuid
+    import datetime as _dt
+    _langfuse = Langfuse()
+    _langfuse_ok = _langfuse.auth_check()
+    if _langfuse_ok:
+        import atexit
+        atexit.register(_langfuse.flush)
+except Exception as _lf_err:
+    _langfuse = None
+    _langfuse_ok = False
+
+def _lf_trace(name, agent="", user_id="orchestrator", inp=None, out=None, model="", metadata=None):
+    """Send trace + generation to Langfuse via v4 ingestion API."""
+    if not _langfuse_ok:
+        return
+    try:
+        trace_id = str(_uuid.uuid4())
+        obs_id = str(_uuid.uuid4())
+        now = _dt.datetime.utcnow().isoformat() + "Z"
+        batch = [
+            {
+                "id": str(_uuid.uuid4()),
+                "type": "trace-create",
+                "timestamp": now,
+                "body": {
+                    "id": trace_id,
+                    "name": name,
+                    "userId": user_id,
+                    "metadata": metadata or {"agent": agent},
+                    "input": inp if isinstance(inp, dict) else {"query": str(inp or "")[:500]},
+                    "output": out if isinstance(out, dict) else {"answer": str(out or "")[:500]},
+                }
+            },
+            {
+                "id": str(_uuid.uuid4()),
+                "type": "generation-create",
+                "timestamp": now,
+                "body": {
+                    "id": obs_id,
+                    "traceId": trace_id,
+                    "name": f"llm-{agent or name}",
+                    "model": model,
+                    "input": inp if isinstance(inp, dict) else {"query": str(inp or "")[:500]},
+                    "output": out if isinstance(out, dict) else {"answer": str(out or "")[:500]},
+                    "metadata": metadata or {"agent": agent},
+                }
+            }
+        ]
+        _langfuse.api.ingestion.batch(batch=batch)
+    except Exception as e:
+        logger.warning(f"Langfuse trace failed: {e}")
+
 from rag_middleware import enrich_for_agent, auto_learn, health_check as rag_health
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("orchestrator")
+# ──────── AUDIT-LOG: Telegram Error Alerts (Phase 0) ────────
+import asyncio as _audit_asyncio
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8718856271:AAHKkOplIj0bgZ3sGa15cLfEbzoSMzpHj4o")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "8212488253")
+
+async def _send_telegram_alert(message: str):
+    """Send error/audit alert to Telegram."""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message[:4000],
+            "parse_mode": "HTML",
+        }
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.post(url, json=payload)
+    except Exception as tg_err:
+        logger.warning(f"Telegram alert failed: {tg_err}")
+
+def _audit_log(level: str, agent: str, message: str, query: str = ""):
+    """Log an audit event and send critical errors to Telegram."""
+    log_entry = f"[AUDIT-{level}] Agent={agent} | {message}"
+    if level == "ERROR":
+        logger.error(log_entry)
+        # Send async Telegram alert for errors
+        tg_msg = (
+            f"<b>FEHLER im Cloud Code Team</b>\n"
+            f"<b>Agent:</b> {agent}\n"
+            f"<b>Fehler:</b> {message[:500]}\n"
+            f"<b>Query:</b> {query[:200]}"
+        )
+        try:
+            loop = _audit_asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(_send_telegram_alert(tg_msg))
+            else:
+                loop.run_until_complete(_send_telegram_alert(tg_msg))
+        except RuntimeError:
+            _audit_asyncio.run(_send_telegram_alert(tg_msg))
+    elif level == "WARN":
+        logger.warning(log_entry)
+    else:
+        logger.info(log_entry)
+
+
 
 app = FastAPI(title="Cloud Code Team Orchestrator", version="3.0.0")
 
@@ -30,23 +134,42 @@ AGENT_ROLES = [
 ]
 
 
-# === 3-TIER MODEL CONFIGURATION (per Agent) ===
-# Tier 1 (Code): MiniMax-M2.5 - architect, coder, devops, tester
-# Tier 2 (Multilingual): GLM-4.7 - coach, planner, docs, worker, reviewer, security, debug
-# Tier 3 (Guenstig): DeepSeek V3.2 - memory
+# === 4-TIER MODEL CONFIGURATION (optimiert nach Benchmark 2026-03-16) ===
+# Tier 1 (Code):      Qwen3-Coder-Next  - schnellstes Code-Modell (3s vs 15s MiniMax)
+# Tier 2 (Reasoning): DeepSeek-V3.2     - 671B MoE, tiefstes Reasoning/Thinking
+# Tier 3 (General):   MiniMax-M2.5      - schnell + solide fuer allgemeine Aufgaben
+# Tier 4 (Memory):    MiniMax-M2.5      - schnellste Antwort fuer einfache Memory-Ops
+#
+# Fallback: OpenRouter (wenn Ollama Cloud ausfaellt)
+OLLAMA_CLOUD_URL = os.getenv("OLLAMA_CLOUD_URL", "http://localhost:11434")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+# Mapping: Ollama Cloud Model -> OpenRouter Fallback Model
+FALLBACK_MODELS = {
+    "qwen3-coder-next":  "qwen/qwen-2.5-coder-32b-instruct",
+    "deepseek-v3.2":     "deepseek/deepseek-chat",
+    "minimax-m2.5":      "deepseek/deepseek-chat",
+    "glm-4.7":           "deepseek/deepseek-chat",
+}
+
 AGENT_MODEL_CONFIG = {
-    "architect":  {"model": "minimax-m2.5",  "tier": "tier1-code",         "temperature": 0.3, "provider": "ollama-cloud"},
-    "coder":      {"model": "minimax-m2.5",  "tier": "tier1-code",         "temperature": 0.2, "provider": "ollama-cloud"},
-    "devops":     {"model": "minimax-m2.5",  "tier": "tier1-code",         "temperature": 0.3, "provider": "ollama-cloud"},
-    "tester":     {"model": "minimax-m2.5",  "tier": "tier1-code",         "temperature": 0.2, "provider": "ollama-cloud"},
-    "planner":    {"model": "glm-4.7",      "tier": "tier2-multilingual",  "temperature": 0.4, "provider": "ollama-cloud"},
-    "docs":       {"model": "glm-4.7",      "tier": "tier2-multilingual",  "temperature": 0.4, "provider": "ollama-cloud"},
-    "reviewer":   {"model": "glm-4.7",      "tier": "tier2-multilingual",  "temperature": 0.3, "provider": "ollama-cloud"},
-    "security":   {"model": "glm-4.7",      "tier": "tier2-multilingual",  "temperature": 0.2, "provider": "ollama-cloud"},
-    "worker":     {"model": "glm-4.7",      "tier": "tier2-multilingual",  "temperature": 0.5, "provider": "ollama-cloud"},
-    "debug":      {"model": "glm-4.7",      "tier": "tier2-multilingual",  "temperature": 0.3, "provider": "ollama-cloud"},
-    "coach":      {"model": "glm-4.7",      "tier": "tier2-multilingual",  "temperature": 0.5, "provider": "ollama-cloud"},
-    "memory":     {"model": "deepseek-v3.2",  "tier": "tier3-guenstig",      "temperature": 0.1, "provider": "ollama-cloud"},
+    # Tier 1: Code-Agents -> Qwen3-Coder-Next (3x schneller, spezialisiert auf Code)
+    "coder":      {"model": "qwen3-coder-next",  "tier": "tier1-code",      "temperature": 0.2, "provider": "ollama-cloud"},
+    "devops":     {"model": "qwen3-coder-next",  "tier": "tier1-code",      "temperature": 0.3, "provider": "ollama-cloud"},
+    "tester":     {"model": "qwen3-coder-next",  "tier": "tier1-code",      "temperature": 0.2, "provider": "ollama-cloud"},
+    # Tier 2: Reasoning-Agents -> DeepSeek-V3.2 (671B, tiefes Thinking)
+    "architect":  {"model": "deepseek-v3.2",     "tier": "tier2-reasoning", "temperature": 0.3, "provider": "ollama-cloud"},
+    "security":   {"model": "deepseek-v3.2",     "tier": "tier2-reasoning", "temperature": 0.2, "provider": "ollama-cloud"},
+    "reviewer":   {"model": "deepseek-v3.2",     "tier": "tier2-reasoning", "temperature": 0.3, "provider": "ollama-cloud"},
+    "debug":      {"model": "deepseek-v3.2",     "tier": "tier2-reasoning", "temperature": 0.3, "provider": "ollama-cloud"},
+    # Tier 3: General-Agents -> MiniMax-M2.5 (schnell + solide)
+    "coach":      {"model": "minimax-m2.5",      "tier": "tier3-general",   "temperature": 0.5, "provider": "ollama-cloud"},
+    "planner":    {"model": "minimax-m2.5",      "tier": "tier3-general",   "temperature": 0.4, "provider": "ollama-cloud"},
+    "docs":       {"model": "minimax-m2.5",      "tier": "tier3-general",   "temperature": 0.4, "provider": "ollama-cloud"},
+    "worker":     {"model": "minimax-m2.5",      "tier": "tier3-general",   "temperature": 0.5, "provider": "ollama-cloud"},
+    # Tier 4: Memory -> MiniMax-M2.5 (schnellste Antwort, einfache Aufgabe)
+    "memory":     {"model": "minimax-m2.5",      "tier": "tier4-memory",    "temperature": 0.1, "provider": "ollama-cloud"},
 }
 
 EMBEDDING_CONFIG = {
@@ -54,6 +177,19 @@ EMBEDDING_CONFIG = {
     "provider": "ollama-local",
     "dimensions": 4096,
 }
+
+
+def _parse_mem0_response(data):
+    """Parse Mem0 API response handling double-nested results."""
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        inner = data.get("results", data)
+        if isinstance(inner, dict):
+            inner = inner.get("results", [])
+        if isinstance(inner, list):
+            return inner
+    return []
 
 class TaskRequest(BaseModel):
     agent: str
@@ -84,6 +220,82 @@ async def health():
         agents_list=list(configured.keys()),
         version="3.0.0"
     )
+
+
+# ---- DIRECT LLM CALL: Ollama Cloud + OpenRouter Fallback ----
+async def _call_llm_direct(prompt: str, agent: str = "worker", system: str = "") -> str:
+    """Call LLM directly. Ollama Cloud first, OpenRouter fallback."""
+    config = AGENT_MODEL_CONFIG.get(agent, AGENT_MODEL_CONFIG["worker"])
+    model = config["model"]
+    temperature = config["temperature"]
+
+    # --- Attempt 1: Ollama Cloud ---
+    try:
+        payload = {
+            "model": f"{model}:cloud",
+            "prompt": prompt,
+            "system": system,
+            "stream": False,
+            "options": {"temperature": temperature}
+        }
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(f"{OLLAMA_CLOUD_URL}/api/generate", json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            answer = data.get("response", "") or data.get("thinking", "")
+            if answer.strip():
+                logger.info(f"[LLM-DIRECT] Ollama OK | agent={agent} model={model}:cloud")
+                # Langfuse trace (v4)
+                _lf_trace(f"llm-direct-{agent}", agent=agent, inp=prompt[:500], out=answer[:500], model=f"{model}:cloud", metadata={"agent": agent, "provider": "ollama-cloud", "eval_count": data.get("eval_count", 0)})
+                return answer.strip()
+            logger.warning(f"[LLM-DIRECT] Ollama empty response for {agent}")
+    except Exception as e:
+        logger.warning(f"[LLM-DIRECT] Ollama failed for {agent}: {e}")
+
+    # --- Attempt 2: OpenRouter Fallback ---
+    if not OPENROUTER_API_KEY:
+        logger.error(f"[LLM-DIRECT] No OpenRouter API key - fallback unavailable")
+        return ""
+    fallback_model = FALLBACK_MODELS.get(model, "deepseek/deepseek-chat")
+    try:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                f"{OPENROUTER_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "https://cloud-code-team.activi.io",
+                    "X-Title": "Cloud Code Team",
+                },
+                json={"model": fallback_model, "messages": messages, "temperature": temperature},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if answer.strip():
+                logger.info(f"[LLM-DIRECT] OpenRouter OK | agent={agent} fallback={fallback_model}")
+                return answer.strip()
+    except Exception as e:
+        logger.error(f"[LLM-DIRECT] OpenRouter also failed: {e}")
+        _audit_log("ERROR", agent, f"Both Ollama+OpenRouter failed: {e}", prompt[:200])
+    return ""
+
+
+async def _check_ollama_health() -> dict:
+    """Check Ollama Cloud connectivity."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{OLLAMA_CLOUD_URL}/api/tags")
+            resp.raise_for_status()
+            models = [m["name"] for m in resp.json().get("models", [])]
+            cloud_models = [m for m in models if ":cloud" in m]
+            return {"status": "ok", "cloud_models": cloud_models, "total": len(models)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
 
 async def _call_agent_streaming(api_key: str, query: str, user: str,
                                  conversation_id: str = "",
@@ -178,6 +390,9 @@ async def run_task(req: TaskRequest):
             inputs=req.inputs,
             agent=req.agent
         )
+        # Langfuse trace (v4)
+        config = AGENT_MODEL_CONFIG.get(req.agent, {})
+        _lf_trace(f"dify-{req.agent}", agent=req.agent, user_id=req.user, inp=req.query[:500], out=result["answer"][:500] if result.get("answer") else "", model=config.get("model","unknown"), metadata={"agent": req.agent, "tier": config.get("tier",""), "provider": "dify", "kb_hits": result.get("sources",{}).get("kb_hits",0) if isinstance(result.get("sources"),dict) else 0})
         return TaskResponse(
             agent=req.agent,
             answer=result["answer"],
@@ -213,6 +428,44 @@ async def load_agent_keys():
     logger.info(f"Orchestrator v3 started. {configured}/{len(AGENT_ROLES)} agents configured.")
     logger.info("Using streaming mode to bypass Dify v1.13 Answer-Node bug.")
 
+
+# ---- LLM DIRECT ENDPOINTS ----
+class DirectLLMRequest(BaseModel):
+    prompt: str
+    agent: str = "worker"
+    system: str = ""
+
+@app.post("/llm/direct")
+async def llm_direct(req: DirectLLMRequest):
+    """Call LLM directly (bypasses Dify). Ollama Cloud + OpenRouter fallback."""
+    answer = await _call_llm_direct(req.prompt, req.agent, req.system)
+    if not answer:
+        raise HTTPException(503, "Both Ollama Cloud and OpenRouter failed")
+    config = AGENT_MODEL_CONFIG.get(req.agent, AGENT_MODEL_CONFIG["worker"])
+    return {"agent": req.agent, "model": config["model"], "provider": "ollama-cloud+openrouter", "answer": answer}
+
+@app.get("/llm/health")
+async def llm_health():
+    """Check LLM provider health."""
+    ollama = await _check_ollama_health()
+    return {
+        "ollama": ollama,
+        "openrouter_configured": bool(OPENROUTER_API_KEY),
+        "fallback_models": FALLBACK_MODELS,
+        "tiers": {k: {"model": v["model"], "tier": v["tier"]} for k, v in AGENT_MODEL_CONFIG.items()},
+    }
+
+
+@app.get("/langfuse/health")
+async def langfuse_health():
+    """Check Langfuse tracing status."""
+    return {
+        "enabled": _langfuse_ok,
+        "base_url": os.getenv("LANGFUSE_BASE_URL", "not set"),
+        "public_key_set": bool(os.getenv("LANGFUSE_PUBLIC_KEY", "")),
+        "secret_key_set": bool(os.getenv("LANGFUSE_SECRET_KEY", "")),
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
@@ -239,9 +492,10 @@ async def get_agent_config():
         "strategy": "3-tier-per-agent",
         "version": "3.0.0",
         "tier_summary": {
-            "tier1-code": {"model": "minimax-m2.5", "agents": [a for a, c in AGENT_MODEL_CONFIG.items() if c["tier"] == "tier1-code"]},
-            "tier2-multilingual": {"model": "glm-4.7", "agents": [a for a, c in AGENT_MODEL_CONFIG.items() if c["tier"] == "tier2-multilingual"]},
-            "tier3-guenstig": {"model": "deepseek-v3.2", "agents": [a for a, c in AGENT_MODEL_CONFIG.items() if c["tier"] == "tier3-guenstig"]},
+            "tier1-code": {"model": "qwen3-coder-next", "agents": [a for a, c in AGENT_MODEL_CONFIG.items() if c["tier"] == "tier1-code"]},
+            "tier2-reasoning": {"model": "deepseek-v3.2", "agents": [a for a, c in AGENT_MODEL_CONFIG.items() if c["tier"] == "tier2-reasoning"]},
+            "tier3-general": {"model": "minimax-m2.5", "agents": [a for a, c in AGENT_MODEL_CONFIG.items() if c["tier"] == "tier3-general"]},
+            "tier4-memory": {"model": "minimax-m2.5", "agents": [a for a, c in AGENT_MODEL_CONFIG.items() if c["tier"] == "tier4-memory"]},
         }
     }
 
@@ -657,7 +911,9 @@ async def _call_agent_with_full_rag(api_key, query, user,
                                      conversation_id="",
                                      inputs=None,
                                      agent="worker"):
-    """Enhanced agent call with FULL RAG+Memory middleware + model config for ALL agents."""
+    """Enhanced agent call with FULL RAG+Memory middleware + Error-Handling + Audit-Log.
+    Phase 0: Error-Handling (#1), Audit-Log (#2), Memory-Save guard (#3).
+    """
     # Inject model config into inputs for Dify workflow awareness
     model_config = AGENT_MODEL_CONFIG.get(agent, {})
     if inputs is None:
@@ -665,27 +921,82 @@ async def _call_agent_with_full_rag(api_key, query, user,
     inputs["_agent_model"] = model_config.get("model", "unknown")
     inputs["_agent_tier"] = model_config.get("tier", "unknown")
     inputs["_agent_temperature"] = str(model_config.get("temperature", 0.5))
+
+    # Enrich query with RAG context
     enriched_query = await enrich_for_agent(
         query=query,
         user_id=user,
         agent=agent,
         include_anti_hallucination=True,
     )
-    auto_learn(user_id=user, user_message=query)
     logger.info(f"RAG Middleware: enriched {len(query)} -> {len(enriched_query)} chars for {agent}")
-    result = await _original_call_agent(api_key, enriched_query, user, conversation_id, inputs, agent)
 
-    # === SELF-LEARNING: Agent-Antwort automatisch in Memory speichern ===
-    try:
-        answer = result.get("answer", "")
-        if answer and len(answer) > 20:
-            # Kompakte Zusammenfassung fuer Memory
+    # ── PHASE 0 (#1): ERROR-HANDLING mit Retry ──
+    MAX_RETRIES = 2
+    last_error = None
+    result = None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            result = await _original_call_agent(api_key, enriched_query, user, conversation_id, inputs, agent)
+            answer = result.get("answer", "").strip()
+
+            # Check: LLM-Antwort leer oder zu kurz?
+            if not answer or len(answer) < 5:
+                _audit_log("WARN", agent, f"Leere LLM-Antwort (Versuch {attempt}/{MAX_RETRIES})", query[:200])
+                if attempt < MAX_RETRIES:
+                    logger.info(f"Retry {attempt}/{MAX_RETRIES} fuer Agent {agent} (leere Antwort)")
+                    continue  # Retry
+                else:
+                    # Alle Retries erschoepft
+                    _audit_log("ERROR", agent,
+                        f"LLM-Antwort LEER nach {MAX_RETRIES} Versuchen. "
+                        f"Modell: {model_config.get('model', 'unknown')}, "
+                        f"Query-Laenge: {len(query)} chars",
+                        query[:200])
+                    result["answer"] = (
+                        f"[FEHLER] Agent '{agent}' konnte keine Antwort generieren. "
+                        f"Bitte versuche es erneut oder formuliere die Frage um."
+                    )
+                    result["_error"] = True
+            else:
+                # Erfolgreiche Antwort
+                _audit_log("INFO", agent, f"Erfolgreiche Antwort ({len(answer)} chars)")
+                break
+
+        except Exception as call_err:
+            last_error = call_err
+            _audit_log("ERROR", agent,
+                f"Exception bei Agent-Call (Versuch {attempt}/{MAX_RETRIES}): {str(call_err)[:300]}",
+                query[:200])
+            if attempt < MAX_RETRIES:
+                logger.info(f"Retry {attempt}/{MAX_RETRIES} fuer Agent {agent} nach Exception")
+                continue
+            else:
+                raise  # Re-raise nach letztem Versuch
+
+    # ── PHASE 0 (#3): Memory-Save NUR bei erfolgreicher LLM-Antwort ──
+    answer = result.get("answer", "").strip() if result else ""
+    is_error = result.get("_error", False) if result else True
+
+    if not is_error and answer and len(answer) > 20:
+        # auto_learn: Fakten aus der User-Query extrahieren
+        try:
+            auto_learn(user_id=user, user_message=query)
+        except Exception as al_err:
+            logger.warning(f"auto_learn failed for {agent}: {al_err}")
+
+        # Self-Learning: Agent-Antwort in EIGENEN Scope speichern (NICHT shared!)
+        # Memory-Policy: Agents schreiben NUR in cct-{agent}, NIEMALS in cloud-code-team
+        try:
             summary = f"Agent {agent} wurde gefragt: {query[:200]}. Antwort-Laenge: {len(answer)} Zeichen."
             from rag_middleware import save_user_memory
             save_user_memory(f"cct-{agent}", summary)
-            logger.info(f"Self-Learning: saved interaction for cct-{agent}")
-    except Exception as sl_err:
-        logger.warning(f"Self-Learning failed for {agent}: {sl_err}")
+            logger.info(f"Self-Learning: saved to OWN scope cct-{agent}")
+        except Exception as sl_err:
+            logger.warning(f"Self-Learning failed for {agent}: {sl_err}")
+    else:
+        logger.info(f"Memory-Save UEBERSPRUNGEN fuer {agent} (Antwort leer oder Fehler)")
 
     return result
 
@@ -756,6 +1067,138 @@ if _os.path.isdir(_workflow_dir):
     logger.info(f"Workflow-Module: {len(_loaded)} geladen ({', '.join(_loaded)})")
 
 
+
+
+
+
+
+# ======================================================================
+# MEMORY SEPARATION: OWN vs SHARED (TEAM) ENDPOINTS
+# Policy: Agents READ own+shared, WRITE only own
+# Shared writes only via explicit /memories/team POST
+# ======================================================================
+
+SHARED_MEMORY_USER_ID = "cloud-code-team"
+
+@app.get("/memories/own/{agent}")
+async def get_own_memories(agent: str, query: str = ""):
+    import httpx
+    user_id = f"cct-{agent}"
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            if query:
+                resp = await client.post("http://localhost:8002/v1/memories/search/",
+                    json={"query": query, "user_id": user_id, "limit": 10})
+            else:
+                resp = await client.get("http://localhost:8002/v1/memories/",
+                    params={"user_id": user_id})
+            if resp.status_code == 200:
+                data = resp.json()
+                entries = _parse_mem0_response(data)
+                count = len(entries) if isinstance(entries, list) else 0
+                return {"agent": agent, "scope": "OWN", "user_id": user_id, "count": count, "memories": entries}
+        except Exception as e:
+            return {"agent": agent, "scope": "OWN", "error": str(e)}
+
+@app.get("/memories/team")
+async def get_team_memories(query: str = "", limit: int = 20):
+    import httpx
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            if query:
+                resp = await client.post("http://localhost:8002/v1/memories/search/",
+                    json={"query": query, "user_id": SHARED_MEMORY_USER_ID, "limit": limit})
+            else:
+                resp = await client.get("http://localhost:8002/v1/memories/",
+                    params={"user_id": SHARED_MEMORY_USER_ID})
+            if resp.status_code == 200:
+                data = resp.json()
+                entries = _parse_mem0_response(data)
+                count = len(entries) if isinstance(entries, list) else 0
+                return {"scope": "SHARED", "user_id": SHARED_MEMORY_USER_ID, "count": count, "memories": entries}
+        except Exception as e:
+            return {"scope": "SHARED", "error": str(e)}
+
+class TeamMemoryRequest(BaseModel):
+    content: str
+    source_agent: str = "orchestrator"
+
+@app.post("/memories/team")
+async def save_team_memory(req: TeamMemoryRequest):
+    import httpx
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            resp = await client.post("http://localhost:8002/v1/memories/",
+                json={"messages": [{"role": "user", "content": f"[Team-Fakt von {req.source_agent}] {req.content}"}],
+                       "user_id": SHARED_MEMORY_USER_ID})
+            if resp.status_code == 200:
+                data = resp.json()
+                count = len(data.get("results", []))
+                logger.info(f"Team memory saved by {req.source_agent}: {count} entries")
+                return {"status": "saved", "scope": "SHARED", "entries_created": count, "source": req.source_agent}
+            else:
+                return {"status": "error", "http_code": resp.status_code}
+        except Exception as e:
+            return {"status": "error", "detail": str(e)}
+
+@app.get("/memories/dual/{agent}")
+async def get_dual_memories(agent: str, query: str = ""):
+    import httpx
+    import asyncio
+    own_id = f"cct-{agent}"
+    async def _fetch(client, uid, scope):
+        try:
+            if query:
+                resp = await client.post("http://localhost:8002/v1/memories/search/",
+                    json={"query": query, "user_id": uid, "limit": 5})
+            else:
+                resp = await client.get("http://localhost:8002/v1/memories/",
+                    params={"user_id": uid})
+            if resp.status_code == 200:
+                data = resp.json()
+                entries = _parse_mem0_response(data)
+                if isinstance(entries, list):
+                    for e in entries:
+                        if isinstance(e, dict):
+                            e["_scope"] = scope
+                            e["_source_user_id"] = uid
+                    return entries
+        except Exception:
+            pass
+        return []
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        own_entries, shared_entries = await asyncio.gather(
+            _fetch(client, own_id, "OWN"), _fetch(client, SHARED_MEMORY_USER_ID, "SHARED"))
+    return {
+        "agent": agent,
+        "own": {"user_id": own_id, "count": len(own_entries), "memories": own_entries},
+        "shared": {"user_id": SHARED_MEMORY_USER_ID, "count": len(shared_entries), "memories": shared_entries},
+        "total": len(own_entries) + len(shared_entries)
+    }
+
+@app.get("/memories/policy")
+async def memory_policy():
+    return {
+        "policy": "OWN_PLUS_SHARED", "version": "1.0",
+        "rules": {
+            "read": "Each agent reads OWN (cct-{agent}) + SHARED (cloud-code-team) memories",
+            "write": "Each agent writes ONLY to OWN (cct-{agent}) scope",
+            "shared_write": "Only via POST /memories/team with source_agent attribution",
+            "user_ids": {"shared": SHARED_MEMORY_USER_ID, "pattern": "cct-{agent_name}",
+                "examples": ["cct-coder", "cct-worker", "cct-architect", "cct-reviewer", "cct-doctor"]}
+        },
+        "endpoints": {
+            "GET /memories/own/{agent}": "Read agent private memories only",
+            "GET /memories/team": "Read shared team memories",
+            "POST /memories/team": "Write to shared team memory (controlled)",
+            "GET /memories/dual/{agent}": "Read merged own+shared",
+            "GET /memories/shared": "Legacy: read across ALL agent scopes",
+            "GET /memories/policy": "This endpoint"
+        }
+    }
+
+
+
 @app.get("/memories/shared")
 async def shared_memories(query: str = "", limit: int = 10):
     """Read memories across ALL agents (shared namespace) — parallel fetch"""
@@ -777,7 +1220,7 @@ async def shared_memories(query: str = "", limit: int = 10):
                 )
             if resp.status_code == 200:
                 data = resp.json()
-                entries = data.get("results", data) if isinstance(data, dict) else data
+                entries = _parse_mem0_response(data)
                 if isinstance(entries, list):
                     for e in entries:
                         if isinstance(e, dict):
@@ -820,15 +1263,13 @@ async def agent_memories(agent: str, query: str = ""):
                 return {"agent": agent, "user_id": user_id, "memories": data}
         except Exception as e:
             return {"agent": agent, "error": str(e)}
-
-
 # ══════════════════════════════════════════════════════════════
 # DOCTOR AGENT — SELF-HEALING INTEGRATION
 # Wraps alle Agent-Calls mit automatischem Retry + Healing
 # ══════════════════════════════════════════════════════════════
 
 try:
-    from workflows.doctor_agent import (
+    from cct_workflows.doctor_agent import (
         state as doctor_state,
         self_healing_call,
         doctor_startup,

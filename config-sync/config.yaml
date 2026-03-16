@@ -24,7 +24,7 @@ server:
 
 hetzner:
   # ⚠ MANUELL: console.hetzner.cloud > API-Tokens
-  api_token: "ENV:HETZNER_API_KEY"
+  api_token: "snqZI61brnHHE3x3Siu0910fWo4gOjiOg8iCtiz3PA20UlSgyYQ15ys6XSN4YrVA"
   ssh_key_name: "cloud-code-team"
 
 domain:
@@ -33,8 +33,8 @@ domain:
 
 cloudflare:
   # ⚠ MANUELL: dash.cloudflare.com > activi.io > Overview
-  api_token: "ENV:CLOUDFLARE_TOKEN"
-  zone_id: "ENV:CLOUDFLARE_ZONE_ID"
+  api_token: "uGqgDTKM5UTQnCfCBRATrpdz2ldW1ew2_AJYjxJi"
+  zone_id: "985e007c3046c98a09540e75fc3037e8"
 
 # ──────────────────────────────────────────
 # PHASE 1: DIFY KONFIGURATION
@@ -67,10 +67,10 @@ redis:
 llm:
   openai:
     # ⚠ MANUELL: platform.openai.com > API Keys
-    api_key: "ENV:OPENAI_API_KEY"
+    api_key: "REDACTED_OPENAI_KEY"
   openrouter:
     # ⚠ MANUELL: openrouter.ai > Keys
-    api_key: "ENV:OPENROUTER_API_KEY"
+    api_key: "REDACTED_OPENROUTER_KEY"
     base_url: "https://openrouter.ai/api/v1"
   ollama:
     base_url: "http://localhost:11434"

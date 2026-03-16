@@ -1,207 +1,206 @@
 # Cloud Code Team - Offene Aufgaben
 
-Stand: 15.03.2026
+Stand: 16.03.2026
 
 ## Legende
-
 - **P1** = Kritisch, blockiert Betrieb
 - **P2** = Wichtig, vor naechstem Release
 - **P3** = Nice-to-have, Haertung
-- ✅ = Erledigt (Datum)
 
 ---
 
-## Erledigt (2026-03-15)
+## ERLEDIGT (Session 4b — 16.03.2026)
 
-### ✅ Mem0 Cloud → Lokal Migration
-- Migration abgeschlossen: 7/9 Memories erfolgreich importiert
-- 9 Vektoren in Qdrant (4096d, qwen3-embedding), 4 Agent-Entities
-- Dify Plugin URL umgestellt: `api.mem0.ai` → `http://cct-mem0:8002`
-- Deep-RAG Middleware umgestellt: `MEM0_API_URL` → `http://localhost:8002`
-- Commits: `e5b70a6`, `ffb6172`, `f8167ce`, `925063a`
+### Ollama Cloud Migration + 4-Tier Routing
+- [x] Ollama Cloud API Key konfiguriert (ollama.service Environment)
+- [x] 5 Cloud-Modelle verfuegbar: deepseek-v3.2, minimax-m2.5, glm-4.7, glm-5, qwen3-coder-next
+- [x] 4-Tier AGENT_MODEL_CONFIG implementiert (Tier 1-4 basierend auf Benchmarks)
+- [x] _call_llm_direct() mit Ollama Cloud first, OpenRouter Fallback
+- [x] /llm/direct und /llm/health Endpoints
+- [x] DeepSeek v3.2 Quirk gefixt (thinking → response Feld)
 
-### ✅ Agent-Watcher Dify Login Fix
-- Base64-Passwort-Encoding fuer Dify v1.13
-- Infinite-Recursion in `get_apps()` behoben
-- Redis Rate-Limit gecleart, Passwort in DB zurueckgesetzt
-- Commit: `6b859b7`
+### Dify Agent Keys Extraktion
+- [x] Alle 12 Agent API-Keys aus Dify PostgreSQL extrahiert
+- [x] .env Datei erstellt mit allen Keys (22 Eintraege)
+- [x] dotenv Laden in main.py integriert
 
-### ✅ Mem0 Server Bugfixes
-- `safe_get_all()` Workaround fuer `unhashable type: slice` Bug
-- Stats/Entities/List-Endpoints repariert
-- Commit: `ffb6172`
+### Langfuse v4 Tracing
+- [x] Langfuse SDK installiert und konfiguriert
+- [x] _lf_trace() Helper mit v4 api.ingestion.batch() API
+- [x] Traces fuer LLM Direct + Dify Agent Calls
+- [x] /langfuse/health Endpoint
+- [x] Auth-Check bei Startup, atexit flush
 
-### ✅ 9 Workflow-Module deployed + verifiziert
-- 22/22 Endpoints live und getestet (chain, smart-route, code, review, debug, security, docs, plan, deep-rag + Sub-Endpoints)
-- Commits: vorherige Session (②-⑩)
+### Namespace Fix
+- [x] workflows/ umbenannt zu cct_workflows/ (Namespace-Kollision mit llama-index-workflows)
+- [x] Import in main.py aktualisiert: from cct_workflows.doctor_agent import ...
 
-### ✅ Telegram Bot konfiguriert
-- Chat ID Arman (8747456067) gesetzt
-- Agent-Watcher sendet Benachrichtigungen
-- Testnachricht erfolgreich zugestellt
-- Commit: `925063a`
+### Dify Default LLM
+- [x] Default LLM von glm-4.7:cloud auf minimax-m2.5:cloud umgestellt
+- [x] LLM-Call von ~100-115s auf ~6-16s beschleunigt (16x schneller)
 
-### ✅ Deep-RAG health alle 3 Quellen gruen
-- `MEM0_API_URL` auf `http://localhost:8002` umgestellt
-- API Key Check entfernt (lokal braucht keinen)
-- deep-rag/health: kb=true, mem0=true, hipporag=true
-- Commit: `925063a`
+### Security Hardening
+- [x] DOCKER-USER iptables Chain: 15 DROP-Regeln (13 Ports blockiert)
+- [x] Regeln persistiert (/etc/iptables.rules + if-pre-up.d/iptables-restore)
+- [x] UFW Regeln erweitert
 
-### ✅ Dokumentation aktualisiert
-- RUNBOOK.md Sektion 8: Mem0 Stack Operations
-- TODOS.md: T23 OpenMemory Dashboard
-- MEMORY.md: Cloud Code Team Projekt komplett
-- config.yaml: Mem0 mode=local, URLs aktualisiert
-- Commit: `b2d2d57`
+### HippoRAG
+- [x] HippoRAG manuell gestartet (war down)
+- [x] 44 Nodes, 57 Relationships in Neo4j
+
+### systemd Services (T-SYS01 ERLEDIGT)
+- [x] orchestrator.service repariert mit EnvironmentFile=/opt/cloud-code/orchestrator/.env
+- [x] hipporag.service repariert und aktiv via systemd
+- [x] neo4j.service erstellt (Docker-basiert, enabled fuer Reboot)
+- [x] Alle 3 Services von manuellen nohup-Prozessen auf systemd umgestellt
+- [x] orchestrator.service: enabled/active (PID via systemd)
+- [x] hipporag.service: enabled/active (PID via systemd)
+
+### Utility Scripts
+- [x] 01-scan-sdks.sh erstellt (SDK Scanner)
+- [x] 02-setup-neo4j-systemd.sh erstellt (Neo4j systemd Setup)
+- [x] 03-chainlit-hybrid-test.py erstellt (Chainlit Hybrid Retrieval)
+- [x] 04-install-missing.sh erstellt (Missing Package Installer)
+
+### SDK Installation
+- [x] Chainlit 2.10.0 installiert
+- [x] 57+ AI-Pakete global installiert (inkl. LlamaIndex 0.14.16, 23 Subpakete)
+
+### Dokumentation
+- [x] README.md komplett neu geschrieben (4-Tier, Langfuse, .env, cct_workflows, systemd)
+- [x] tech-stack.md aktualisiert (systemd active, 15 iptables rules, SDKs)
+- [x] projektbeschreibung.md aktualisiert (systemd, Chainlit, SDKs)
+- [x] workflows-und-prozesse.md aktualisiert (systemd active, Probleme korrigiert)
+- [x] RUNBOOK.md komplett neu geschrieben (systemd Restart, Utility Scripts)
+- [x] TODOS.md aktualisiert (T-SYS01 erledigt)
+
+---
+
+## ERLEDIGT (Fruehere Sessions)
+
+### Phase 0: Error-Handling + Audit-Log + Memory-Guard
+- [x] Retry-Mechanismus (max 2 Versuche) in _call_agent_with_full_rag()
+- [x] Audit-Log mit Telegram Alerts bei ERROR
+- [x] Memory-Save Guard (nur bei erfolgreicher Antwort)
+
+### Mem0 Cloud → Lokal Migration
+- [x] 9 Vektoren in Qdrant, Dify Plugin + Middleware umgestellt
+
+### Agent-Watcher + Telegram Bot
+- [x] Agent-Watcher aktiv, Telegram Bot konfiguriert
+
+### 9 Workflow-Module
+- [x] 22/22 Endpoints live und getestet
+
+### SDK Installation (frueher)
+- [x] 8 SDKs auf Server: fastembed, qdrant-client, mem0ai, ragas, cachetools, 3x llama-index-readers
+
+### Knowledge Graph Aktivierung
+- [x] Graph=true auf Server + lokal (Claude Desktop MCP)
+- [x] Entity + Relation + Contradiction Detection aktiv
+
+### Memory Own+Shared Trennung
+- [x] 5 neue API-Endpoints (/memories/own, /team, /dual, /policy, /shared)
+- [x] Write-Isolation: Self-Learning nur in cct-{agent}
+- [x] Dual-Search in RAG Middleware
 
 ---
 
 ## P1 - Kritisch
 
+### T-SYS02: OpenRouter API-Key setzen
+- **Problem:** OPENROUTER_API_KEY in .env ist leer
+- **Auswirkung:** Bei Ollama Cloud Ausfall kein Fallback moeglich
+- **Aktion:** Key bei openrouter.ai generieren, in .env eintragen
+
+### T-SYS03: Mem0 Dify-Bottleneck optimieren
+- **Problem:** Mem0 Tool Calls im Dify Chatflow dauern ~45s (12-15s abrufen + 30s speichern)
+- **Auswirkung:** Gesamte Dify-Antwortzeit ~47-59s trotz schnellem LLM (6-16s)
+- **Optionen:**
+  1. Memory speichern async machen (Antwort sofort, Speichern im Hintergrund) → -30s
+  2. Memory nur bei bestimmten Agents (Coder/Tester brauchen kein Langzeitgedaechtnis)
+  3. Memory auf Orchestrator-Ebene (statt Dify Tool-Call)
+
+### T-SYS04: Dify Answer-Node Template-Bug
+- **Problem:** {{#llm-main.text#}} wird nicht aufgeloest
+- **Workaround:** Streaming + node_finished Event Extraktion im Orchestrator
+- **Dauerhafte Loesung:** Dify v1.14+ testen oder Answer-Node Config aendern
+
 ### T01: Hardcodierte API-Keys aus Code entfernen
-- **Datei:** `telegram_bot.py` Zeile 21-22 (TELEGRAM_TOKEN, DIFY_API_KEY)
-- **Datei:** `orchestrator/main.py` Zeile 394-396 (MEM0_API_KEY, MEM0_ORG_ID, MEM0_PROJECT_ID)
-- **Risiko:** Keys sind im Git-Verlauf. Nach Fix: Keys rotieren.
-- **Fix:** Alle Keys in `.env` verschieben, `os.getenv()` ohne Default-Wert nutzen
-- **Hinweis:** Mem0 API Key (Cloud) wird nicht mehr benoetigt (lokal aktiv), aber andere Keys bleiben kritisch
-
-### T02: OpenRouter-Bug untersuchen
-- **Problem:** GPT-4o ueber OpenRouter liefert bei einigen Agents `null`-Antworten
-- **Ursache:** Vermutlich Dify v1.13 Answer-Node Template-Bug in Kombination mit OpenRouter
-- **Workaround existiert:** Streaming-Mode extrahiert LLM-Output aus `node_finished` Events
-- **Aktion:** Testen ob der Bug mit Dify v1.14+ behoben ist
-
-### T03: DIFY_KB_KEY korrekt setzen
-- **Datei:** `rag_middleware.py` Zeile 38
-- **Problem:** Default-Wert `REDACTED_DIFY_KB_KEY` ist ein Platzhalter
-- **Aktion:** Echten Dataset-API-Key aus Dify Admin holen und in `.env` setzen
-- **Hinweis:** KB-Key `dataset-WG3ca69737ZxjHdi4GFHEG28` existiert in config.yaml — ggf. bereits gesetzt?
-
-### T04: IST vs SOLL Code synchronisieren
-- **Problem:** `orchestrator/main.py` AGENT_MODEL_CONFIG zeigt SOLL (GLM-4.7, DeepSeek V3.2) aber Server laeuft mit IST (GPT-4o, MiniMax-M2.5)
-- **Aktion:** Entweder Code auf IST korrigieren ODER Migration auf Open-Source-Stack durchfuehren
-- **Entscheidung noetig:** Bleibt ihr bei GPT-4o oder migriert ihr?
+- **Datei:** telegram_bot.py (TELEGRAM_TOKEN, DIFY_API_KEY)
+- **Risiko:** Keys im Git-Verlauf. Nach Fix: Keys rotieren.
 
 ---
 
 ## P2 - Wichtig
 
-### T05: Telegram Bot Live-Test
-- **Status:** Bot ist als systemd Service aktiv, Agent-Watcher sendet Alerts
-- **Aktion:** Vollstaendiger E2E-Test: /start, /lang, Frage stellen, Memory pruefen
-- **Erwartung:** Bot antwortet in gewaehlter Sprache mit RAG-angereichertem Kontext
-- **Neu:** Denis Chat ID noch hinzufuegen (Denis muss `@A_AI_Couch_bot` anschreiben)
+### T-P201: Mem0 LLM aktualisieren
+- **Problem:** Mem0 Server (:8002) nutzt noch glm-4.7:cloud als LLM fuer Entity Extraction
+- **Aktion:** Mem0 Config auf minimax-m2.5:cloud umstellen (schneller)
 
-### T06: HippoRAG Health pruefen
-- **Status:** deep-rag/health zeigt hipporag=true ✅
-- **Endpoint:** GET /hipporag/health
-- **Noch zu tun:** Pruefen ob Knowledge Graph ausreichend befuellt ist
+### T05: Telegram Bot Live-Test
+- **Status:** Bot als systemd Service aktiv, Agent-Watcher sendet Alerts
+- **Aktion:** Vollstaendiger E2E-Test
 
 ### T07: Knowledge Base befuellen
-- **Ordner:** `kb-docs/` (aktuell 3 Dateien)
-- **Aktion:** Weitere Projekt-Dokumentation in die Dify KB hochladen
-- **Ziel:** Agent-Antworten werden praeziser durch mehr Kontext
+- **Ordner:** kb-docs/ (aktuell 3 Dateien, jetzt aktualisiert)
+- **Aktion:** Weitere Projekt-Dokumentation in Dify KB hochladen
 
-### T08: ~~Mem0 Cloud Verbindung pruefen~~ → Mem0 Lokal Haertung
-- **Aktualisiert:** Cloud ist abgeloest, lokal ist aktiv
-- **Aktion:** Mem0 Single-Worker Problem fixen (haengt bei langen Ollama-Calls)
-- **Fix-Optionen:** uvicorn workers=2 ODER async-Verarbeitung der LLM-Calls
-- **Workaround:** `docker restart cct-mem0` bei Timeout
+### T08: Mem0 Single-Worker Problem
+- **Problem:** Mem0 haengt bei langen Ollama-Calls
+- **Fix:** uvicorn workers=2 ODER async-Verarbeitung
 
-### T09: Backup-Script testen
-- **Datei:** `backup.sh`
-- **Aktion:** Manuell ausfuehren, pruefen ob Backup vollstaendig ist
-- **Erwartung:** Dify-Daten, SQLite DBs, Configs, Mem0 Qdrant-Daten werden gesichert
-- **Neu:** Mem0 Volumes (mem0_qdrant_data) ins Backup aufnehmen
+### T09: Backup-Script testen + Mem0 Volumes aufnehmen
 
-### T10: broad exceptions reduzieren
-- **Dateien:** `rag_middleware.py` (5x bare except), `telegram_bot.py` (mehrere)
-- **Aktion:** Spezifische Exception-Typen statt `except:` oder `except Exception`
-- **Prioritaet:** Besonders in `health_check()` und `fetch_kb()`
-
-### T23: OpenMemory Dashboard deployen (Self-Hosted Mem0 UI)
-- **Quelle:** `mem0ai/mem0` GitHub Repo → OpenMemory Subprojekt
-- **Stack:** React Frontend + MCP Backend, Docker-basiert
-- **Ziel:** Ersatz fuer app.mem0.ai Cloud Dashboard (proprietaer, nicht self-hostbar)
-- **Anbindung:**
-  - Mem0 Server: `http://cct-mem0:8002` (bestehend, docker_default Netzwerk)
-  - Qdrant: `http://cct-mem0-qdrant:6333` (Port 16333 extern)
-  - Neo4j Graph: `bolt://neo4j:7687` (bestehend, DB: neo4j)
-- **Features:**
-  - Memory-Liste mit Entities, Content, Categories
-  - Entities-Uebersicht (User + Agent Zuordnung)
-  - Graph Memory Visualisierung (Neo4j Daten)
-  - Stats: Total Memories, Requests, Add/Retrieval Events
-- **Schritte:**
-  1. OpenMemory Repo clonen und Architektur pruefen
-  2. docker-compose.mem0.yml erweitern (neuer Service: openmemory-ui)
-  3. Frontend konfigurieren: API URL auf lokalen Mem0 Server
-  4. Neo4j Graph-Daten im Dashboard sichtbar machen
-  5. Port festlegen (Vorschlag: 3030 oder 3001)
-  6. Optional: Nginx Reverse Proxy fuer HTTPS
-- **Abhaengigkeiten:** cct-mem0 (healthy), cct-mem0-qdrant (healthy), neo4j (running)
-- **Runbook:** Sektion 8.5
+### T23: OpenMemory Dashboard deployen (mem0_ui laeuft bereits auf Port 3000)
 
 ---
 
 ## P3 - Haertung
 
+### T10: broad exceptions in rag_middleware.py und telegram_bot.py reduzieren
 ### T11: Load Testing mit Locust
-- **Datei:** `locustfile.py`
-- **Aktion:** Locust ausfuehren, Orchestrator unter Last testen
-- **Ziel:** Wie viele parallele Anfragen haelt der Server aus?
-
-### T12: DSPy Evaluation erweitern
-- **Dateien:** `dspy_config.py`, `eval_benchmark.json`
-- **Aktion:** Benchmark-Fragen ausfuehren, Antwortqualitaet messen
-
-### T13: Entity-Extraktion automatisieren
-- **Datei:** `extract_entities.py`
-- **Aktion:** In Pipeline einbauen — bei neuen KB-Docs automatisch Entities nach Neo4j
-
-### T14: Dify Plugin v3 testen
-- **Ordner:** `plugins/cloud-code-orchestrator/`
-- **Aktion:** Plugin in Dify installieren, pruefen ob Tools funktionieren
-
-### T15: Git-Verlauf bereinigen (API-Keys)
-- **Problem:** Hardcodierte Keys in frueheren Commits sichtbar
-- **Aktion:** `git filter-branch` oder `BFG Repo-Cleaner` nach T01
-- **Danach:** ALLE betroffenen Keys rotieren
-
+### T13: Entity-Extraktion automatisieren (extract_entities.py in Pipeline)
+### T15: Git-Verlauf bereinigen (API-Keys in frueheren Commits)
 ### T16: Logging vereinheitlichen
-- **Problem:** Unterschiedliche Logger-Namen und Formate in den Dateien
-- **Aktion:** Einheitliches Format, Log-Level konfigurierbar via ENV
-
-### T17: Rollback-Mechanismus
-- **Problem:** Kein automatischer Rollback bei fehlgeschlagenem Deploy
-- **Aktion:** Rollback-Script oder systemd-Watchdog einrichten
-
-### T24: Mem0 get_all() Bug richtig fixen
-- **Problem:** `safe_get_all()` ist nur Workaround; qdrant-client 1.17 + Qdrant v1.12 hat Slice-Bug
-- **Aktion:** qdrant-client Version pinnen oder scroll-Methode direkt aufrufen
-- **Workaround aktiv:** `safe_get_all()` in server.py faengt TypeError ab
-
-### T25: Telegram Gruppe als Alert-Ziel
-- **Gruppe:** "D & A.AI Couch" (Chat ID: `-5101871155`)
-- **Aktion:** Evaluieren ob Gruppe statt Einzelchat fuer Alerts genutzt werden soll
-- **Vorteil:** Denis + Arman sehen beide die Alerts
-
+### T17: Rollback-Mechanismus (automatisch bei fehlgeschlagenem Deploy)
+### T24: Mem0 get_all() Bug richtig fixen (qdrant-client Slice-Bug)
+### T25: Telegram Gruppe als Alert-Ziel evaluieren
 ### T26: config.yaml Inkonsistenzen bereinigen
-- **Problem:** Einige Werte in config.yaml stimmen nicht mit IST ueberein:
-  - `mem0.graph_database: "mem0"` → sollte `"neo4j"` sein (Community Edition)
-  - `neo4j.password` → stimmt nicht mit docker-compose ueberein (`22e58741703f24f1913550c9a8a51c99`)
-  - `neo4j.database: "cloudcode"` → sollte `"neo4j"` sein
-  - `embedding.dimension: 1536` → Mem0 nutzt 4096 (qwen3-embedding)
-- **Aktion:** config.yaml mit IST-Zustand synchronisieren
+
+---
+
+## PRIO 1: Memory System Upgrade (Supermemory-Niveau)
+
+### U1: SPEED — Semantic Search 60s -> <500ms
+- Embedding-Wechsel: qwen3-embedding (4096d) → nomic-embed-text (768d)
+- Neue Qdrant Collection: mem0_v2 (768d)
+- Parallele Agent-Queries: asyncio.gather()
+- Embedding-Cache: LRU, 5min TTL, max 500
+- SDKs bereit: fastembed, AsyncQdrantClient
+
+### U2: AUTO-DECAY — Veraltete Memories vergessen (teilweise erledigt)
+- [x] Contradiction Detection (Graph=true, Mem0 v1.0.5)
+- [x] Entity/Relation Extraction (3 LLM-Calls pro Memory)
+- [ ] Decay-Score + Cron (Payload, Formel, naechtlicher Sweep)
+- [ ] Telegram-Report nach Sweep
+
+### U3: CONNECTORS — GitHub/Notion/Gmail Sync
+- POST /ingest Endpoint
+- LlamaIndex Readers installiert (llama-index-readers-github, -google, -notion)
+
+### U4: BENCHMARKS — Memory-Qualitaet messen
+- 50 Eval-Paare, Recall@5, MRR, Latenz
+- ragas SDK installiert
 
 ---
 
 ## Phase 9 - Docu-Blueprint-System (geplant)
 
-### T18: MCP-Server fuer Phase 9 aufsetzen
-### T19: Document Lifecycle API implementieren
+### T18: MCP-Server aufsetzen
+### T19: Document Lifecycle API
 ### T20: Semantic Cache Layer
-### T21: Unified Retriever fuer Qdrant + Neo4j
+### T21: Unified Retriever
 ### T22: Lifecycle-aware Query Filter
 
 ---
@@ -210,8 +209,10 @@ Stand: 15.03.2026
 
 | Prioritaet | Offen | Erledigt | Beschreibung |
 |-----------|-------|----------|-------------|
-| P1 | 4 | 0 | Kritisch (Security, Bugs) |
-| P2 | 7 | 7 | Vor naechstem Release |
-| P3 | 10 | 0 | Haertung |
+| P1 | 4 | 1 | Kritisch (OpenRouter, Mem0-Bottleneck, Answer-Node, Keys) |
+| P2 | 5 | 0 | Vor naechstem Release |
+| P3 | 9 | 0 | Haertung |
+| PRIO 1 Memory | 3.5 | 0.5 | Memory Upgrade U1-U4 |
 | Phase 9 | 5 | 0 | Neue Features |
-| **Gesamt** | **26** | **7** | |
+| Erledigt S4b | - | 30+ | Ollama Cloud, 4-Tier, Langfuse, Security, systemd, Scripts, Docs |
+| Erledigt frueher | - | 25+ | Mem0 Migration, Workflows, SDKs, Graph, etc. |
