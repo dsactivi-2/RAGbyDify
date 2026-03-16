@@ -1,342 +1,557 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cloud Code Team — System-Übersicht (16. März 2026)</title>
-<style>
-:root {
-  --bg: #0a0e17; --surface: #111827; --card: #1a2332;
-  --border: #2d3748; --text: #e2e8f0; --muted: #94a3b8;
-  --green: #10b981; --red: #ef4444; --amber: #f59e0b;
-  --blue: #3b82f6; --purple: #8b5cf6; --cyan: #06b6d4;
-  --green-bg: rgba(16,185,129,0.1); --red-bg: rgba(239,68,68,0.1);
-  --amber-bg: rgba(245,158,11,0.1); --blue-bg: rgba(59,130,246,0.1);
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--text); font-family:'Inter','Segoe UI',sans-serif; line-height:1.6; padding:2rem; }
-.container { max-width:1400px; margin:0 auto; }
-h1 { font-size:2rem; margin-bottom:0.3rem; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.subtitle { color:var(--muted); margin-bottom:2rem; font-size:0.95rem; }
-.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; }
-.badge-ok { background:var(--green-bg); color:var(--green); border:1px solid var(--green); }
-.badge-warn { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber); }
-.badge-err { background:var(--red-bg); color:var(--red); border:1px solid var(--red); }
-.badge-info { background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); }
-.grid { display:grid; gap:1.5rem; }
-.grid-2 { grid-template-columns:1fr 1fr; }
-.grid-3 { grid-template-columns:1fr 1fr 1fr; }
-@media(max-width:900px){ .grid-2,.grid-3 { grid-template-columns:1fr; } }
-.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.5rem; }
-.card h2 { font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; }
-.card h3 { font-size:0.95rem; color:var(--cyan); margin:1rem 0 0.5rem; }
-.stat-row { display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
-.stat-row:last-child { border-bottom:none; }
-.stat-label { color:var(--muted); }
-.stat-value { font-weight:600; font-family:'Fira Code',monospace; }
-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
-th { text-align:left; padding:0.5rem; border-bottom:2px solid var(--border); color:var(--cyan); font-weight:600; }
-td { padding:0.5rem; border-bottom:1px solid var(--border); }
-tr:hover { background:rgba(59,130,246,0.05); }
-.section-title { font-size:1.4rem; margin:2.5rem 0 1rem; padding-bottom:0.5rem; border-bottom:2px solid var(--border); }
-.flow { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin:0.8rem 0; font-size:0.85rem; }
-.flow-step { background:var(--surface); border:1px solid var(--border); padding:0.3rem 0.8rem; border-radius:6px; }
-.flow-arrow { color:var(--cyan); font-weight:bold; }
-.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem; }
-.kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.2rem; text-align:center; }
-.kpi-value { font-size:1.8rem; font-weight:700; font-family:'Fira Code',monospace; }
-.kpi-label { font-size:0.8rem; color:var(--muted); margin-top:0.3rem; }
-.kpi-green .kpi-value { color:var(--green); }
-.kpi-blue .kpi-value { color:var(--blue); }
-.kpi-purple .kpi-value { color:var(--purple); }
-.kpi-cyan .kpi-value { color:var(--cyan); }
-.kpi-amber .kpi-value { color:var(--amber); }
-.kpi-red .kpi-value { color:var(--red); }
-code { background:var(--surface); padding:1px 5px; border-radius:3px; font-size:0.85em; }
-.timestamp { text-align:right; color:var(--muted); font-size:0.8rem; margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border); }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Code Team - System Übersicht</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #0a0e17;
+            color: #e1e8ed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', monospace;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 40px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .kpi-card {
+            background: linear-gradient(135deg, #1a2332 0%, #141b28 100%);
+            border: 1px solid #2a3f5f;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .kpi-card h3 {
+            font-size: 0.85em;
+            text-transform: uppercase;
+            color: #7dd3fc;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .kpi-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #06b6d4;
+            margin-bottom: 5px;
+        }
+        
+        .kpi-desc {
+            font-size: 0.8em;
+            color: #94a3b8;
+        }
+        
+        section {
+            margin-bottom: 40px;
+        }
+        
+        section h2 {
+            font-size: 1.8em;
+            color: #7dd3fc;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2a3f5f;
+        }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, #1a2332 0%, #141b28 100%);
+            border: 1px solid #2a3f5f;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .info-card h3 {
+            color: #06b6d4;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #243447;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+        
+        .detail-value {
+            color: #e1e8ed;
+            font-family: 'Courier New', monospace;
+            font-weight: 500;
+        }
+        
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .agent-badge {
+            background: linear-gradient(135deg, #1e3c72 0%, #1a2f5a 100%);
+            border: 1px solid #2a5298;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+            color: #7dd3fc;
+            font-size: 0.9em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: linear-gradient(135deg, #1a2332 0%, #141b28 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            margin-top: 15px;
+        }
+        
+        thead {
+            background: linear-gradient(135deg, #2a3f5f 0%, #1f3a52 100%);
+        }
+        
+        th {
+            padding: 15px;
+            text-align: left;
+            color: #7dd3fc;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #243447;
+            color: #e1e8ed;
+        }
+        
+        tr:hover {
+            background-color: #1f2d3d;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .status-active {
+            color: #4ade80;
+            font-weight: 500;
+        }
+        
+        .status-warning {
+            color: #facc15;
+            font-weight: 500;
+        }
+        
+        .endpoint {
+            background-color: #0f1419;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            color: #7dd3fc;
+            font-size: 0.85em;
+            margin: 5px 0;
+            border-left: 3px solid #06b6d4;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #475569;
+            font-size: 0.85em;
+            border-top: 1px solid #2a3f5f;
+            margin-top: 50px;
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-
-<h1>Cloud Code Team — System-Übersicht</h1>
-<p class="subtitle">Stand: 16. März 2026, 03:50 UTC · Server 178.104.51.123 · Alle Daten live verifiziert · 17 Fixes applied</p>
-
-<!-- ═══════ KPI ═══════ -->
-<div class="kpi-grid">
-  <div class="kpi kpi-green"><div class="kpi-value">6/6</div><div class="kpi-label">Services OK</div></div>
-  <div class="kpi kpi-blue"><div class="kpi-value">11</div><div class="kpi-label">AI Agenten</div></div>
-  <div class="kpi kpi-purple"><div class="kpi-value">15</div><div class="kpi-label">Docker Container</div></div>
-  <div class="kpi kpi-cyan"><div class="kpi-value">3</div><div class="kpi-label">Systemd Services</div></div>
-  <div class="kpi kpi-amber"><div class="kpi-value">56</div><div class="kpi-label">API Endpoints</div></div>
-  <div class="kpi kpi-green"><div class="kpi-value">74</div><div class="kpi-label">Mem0 Vektoren</div></div>
-  <div class="kpi kpi-purple"><div class="kpi-value">6</div><div class="kpi-label">LLM Modelle</div></div>
-  <div class="kpi kpi-red"><div class="kpi-value">16%</div><div class="kpi-label">Disk genutzt</div></div>
-</div>
-
-<!-- ═══════ 1. ARCHITEKTUR ═══════ -->
-<div class="section-title">🏗️ 1. Architektur-Überblick</div>
-
-<div class="card">
-  <h2>Schichten-Architektur</h2>
-  <div style="font-family:'Fira Code',monospace;font-size:0.82rem;line-height:2;color:var(--muted);padding:1rem;background:var(--surface);border-radius:8px;overflow-x:auto">
-<span style="color:var(--green)">┌─────────────────────────────────────────────────────────────────┐</span>
-<span style="color:var(--green)">│  FRONTEND: Telegram Bot (Coach) · Dify Web UI (Port 3080)      │</span>
-<span style="color:var(--green)">└──────────────────────────────┬──────────────────────────────────┘</span>
-                               │
-<span style="color:var(--blue)">┌──────────────────────────────▼──────────────────────────────────┐</span>
-<span style="color:var(--blue)">│  ORCHESTRATOR (FastAPI, Port 8000)                              │</span>
-<span style="color:var(--blue)">│  ├─ /task, /chain, /route, /feedback, /config                   │</span>
-<span style="color:var(--blue)">│  ├─ /memory/*, /learning/*, /hipporag/*                         │</span>
-<span style="color:var(--blue)">│  ├─ Self-Healing Wrapper (Monkey-Patch Chain)                   │</span>
-<span style="color:var(--blue)">│  └─ Doctor Agent Router (/doctor/*)                             │</span>
-<span style="color:var(--blue)">└──┬────────────┬──────────────┬────────────┬─────────────────────┘</span>
-   │            │              │            │
-<span style="color:var(--purple)">┌──▼────┐  ┌────▼─────┐  ┌────▼────┐  ┌───▼───────────────────┐</span>
-<span style="color:var(--purple)">│ Dify  │  │ HippoRAG │  │  Mem0   │  │ Doctor Agent          │</span>
-<span style="color:var(--purple)">│ :3080 │  │  :8001   │  │  :8002  │  │ (Watchdog, Heal,      │</span>
-<span style="color:var(--purple)">│ 11 WF │  │ Graph-RAG│  │ Vector+ │  │  Dossier, Self-Heal)  │</span>
-<span style="color:var(--purple)">└──┬────┘  └────┬─────┘  └──┬──┬──┘  └───────────────────────┘</span>
-   │            │           │  │
-<span style="color:var(--cyan)">┌──▼────┐  ┌────▼─────┐  ┌──▼──▼────┐  ┌───────────────────┐</span>
-<span style="color:var(--cyan)">│Qdrant │  │  Neo4j   │  │Qdrant   │  │     Ollama        │</span>
-<span style="color:var(--cyan)">│(Dify) │  │  :7474   │  │(Mem0)   │  │    :11434         │</span>
-<span style="color:var(--cyan)">│intern │  │ 44N/57R  │  │:16333   │  │ 6 Modelle         │</span>
-<span style="color:var(--cyan)">│       │  │          │  │59 Punkte│  │ 3 Cloud + 3 Lokal │</span>
-<span style="color:var(--cyan)">└───────┘  └──────────┘  └─────────┘  └───────────────────┘</span>
-  </div>
-</div>
-
-<!-- ═══════ 2. AGENTEN ═══════ -->
-<div class="section-title">🤖 2. Agent-Verzeichnis (11 Agenten)</div>
-
-<div class="card">
-  <table>
-    <tr><th>Agent</th><th>Rolle</th><th>LLM Tier</th><th>Dify Workflow</th><th>Self-Healing</th><th>Dossier</th><th>Mem0</th></tr>
-    <tr>
-      <td>🏗️ <strong>Architect</strong></td><td>System-Design, Architektur-Entscheidungen</td>
-      <td>Tier 1 (minimax-m2.5)</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td>
-      <td><span style="color:var(--green)">3 Einträge</span></td><td>0</td>
-    </tr>
-    <tr>
-      <td>💻 <strong>Coder</strong></td><td>Code schreiben, implementieren</td>
-      <td>Tier 1</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>🧪 <strong>Tester</strong></td><td>Tests erstellen, Qualitätssicherung</td>
-      <td>Tier 1</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td>
-      <td><span style="color:var(--green)">1 Eintrag</span></td><td>0</td>
-    </tr>
-    <tr>
-      <td>👁️ <strong>Reviewer</strong></td><td>Code-Review, Best Practices</td>
-      <td>Tier 1</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>🚀 <strong>DevOps</strong></td><td>CI/CD, Deployment, Infrastruktur</td>
-      <td>Tier 1</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>📝 <strong>Docs</strong></td><td>Dokumentation, README, API-Docs</td>
-      <td>Tier 2 (glm-4.7)</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>🔒 <strong>Security</strong></td><td>Sicherheitsanalyse, Vulnerability-Check</td>
-      <td>Tier 1</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>📋 <strong>Planner</strong></td><td>Sprint-Planung, Task-Breakdown</td>
-      <td>Tier 2</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>🐛 <strong>Debug</strong></td><td>Fehlersuche, Debugging</td>
-      <td>Tier 1</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>⚡ <strong>Worker</strong></td><td>General Purpose, Default-Agent</td>
-      <td>Tier 1</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr>
-      <td>🎯 <strong>Coach</strong></td><td>Telegram-Bot, Mentoring, Feedback</td>
-      <td>Tier 2</td><td><span class="badge badge-ok">8-Node</span></td>
-      <td><span class="badge badge-ok">AKTIV</span></td><td>0</td><td>0</td>
-    </tr>
-    <tr style="background:var(--blue-bg)">
-      <td>🩺 <strong>Doctor</strong></td><td>Health Monitoring, Self-Healing, Dossier</td>
-      <td>—</td><td>— (FastAPI nativ)</td>
-      <td>— (ist Self-Healer)</td>
-      <td><span style="color:var(--cyan)">7 zentral</span></td><td>cct-doctor</td>
-    </tr>
-  </table>
-</div>
-
-<!-- ═══════ 3. DATEIEN & MODULE ═══════ -->
-<div class="section-title">📂 3. Kern-Dateien &amp; Module</div>
-
-<div class="grid grid-2">
-  <div class="card">
-    <h2>Orchestrator</h2>
-    <table>
-      <tr><th>Datei</th><th>Funktionen</th><th>Beschreibung</th></tr>
-      <tr><td><code>main.py</code></td><td>27</td><td>FastAPI App, Routing, Self-Healing Patch</td></tr>
-      <tr><td><code>workflows/doctor_agent.py</code></td><td>29</td><td>Doctor Agent, Watchdog, Dossier, Healing</td></tr>
-    </table>
-    <p style="font-size:0.8rem;color:var(--muted);margin-top:0.8rem">Pfad: <code>/opt/cloud-code/orchestrator/</code></p>
-  </div>
-
-  <div class="card">
-    <h2>Mem0 Local</h2>
-    <table>
-      <tr><th>Datei</th><th>Beschreibung</th></tr>
-      <tr><td><code>server.py</code></td><td>Mem0 API Server (uvicorn, 2 Workers)</td></tr>
-      <tr><td><code>docker-compose.mem0.yml</code></td><td>Mem0 + Qdrant Container</td></tr>
-    </table>
-    <p style="font-size:0.8rem;color:var(--muted);margin-top:0.8rem">Pfad: <code>/opt/cloud-code/mem0-local/</code></p>
-  </div>
-</div>
-
-<!-- ═══════ 4. API ENDPOINTS ═══════ -->
-<div class="section-title">🔌 4. API Endpoints</div>
-
-<div class="grid grid-3">
-  <div class="card">
-    <h2>Core (Orchestrator)</h2>
-    <div style="font-family:'Fira Code',monospace;font-size:0.8rem;color:var(--muted);line-height:1.8">
-      GET  /health<br>
-      POST /task<br>
-      POST /chain<br>
-      GET  /config/agents<br>
-      GET  /config/agent/{name}<br>
-      POST /route<br>
-      GET  /hooks<br>
-      POST /feedback<br>
-      GET  /learning/stats
+    <div class="container">
+        <header>
+            <h1>☁️ Cloud Code Team - System Übersicht</h1>
+            <p>Live Verified: 16. März 2026 | Hetzner CX31 Infrastructure</p>
+        </header>
+        
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <h3>🖥️ Server</h3>
+                <div class="kpi-value">Hetzner CX31</div>
+                <div class="kpi-desc">8 vCPU, 30GB RAM</div>
+            </div>
+            <div class="kpi-card">
+                <h3>🤖 Agents</h3>
+                <div class="kpi-value">11</div>
+                <div class="kpi-desc">Aktive Agenten im System</div>
+            </div>
+            <div class="kpi-card">
+                <h3>🐳 Container</h3>
+                <div class="kpi-value">18</div>
+                <div class="kpi-desc">Docker Container laufen</div>
+            </div>
+            <div class="kpi-card">
+                <h3>💾 Disk</h3>
+                <div class="kpi-value">35G / 226G</div>
+                <div class="kpi-desc">17% Auslastung</div>
+            </div>
+            <div class="kpi-card">
+                <h3>🧠 RAM</h3>
+                <div class="kpi-value">6.9Gi / 30Gi</div>
+                <div class="kpi-desc">23% Auslastung</div>
+            </div>
+            <div class="kpi-card">
+                <h3>📊 LLM Modelle</h3>
+                <div class="kpi-value">6</div>
+                <div class="kpi-desc">Verschiedene LLM Modelle</div>
+            </div>
+        </section>
+        
+        <section>
+            <h2>🏗️ Infrastructure & Endpoints</h2>
+            <div class="card-grid">
+                <div class="info-card">
+                    <h3>Server Details</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">IP Adresse</span>
+                        <span class="detail-value">178.104.51.123</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Provider</span>
+                        <span class="detail-value">Hetzner Cloud</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Typ</span>
+                        <span class="detail-value">CX31 (8 vCPU)</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Speicher</span>
+                        <span class="detail-value">30GB RAM</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Disk</span>
+                        <span class="detail-value">226GB SSD</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>FastAPI Orchestrator</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Version</span>
+                        <span class="detail-value">v3.0.0</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Port</span>
+                        <span class="detail-value">8000</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Status</span>
+                        <span class="detail-value status-active">● Running</span>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 style="color: #7dd3fc; margin-top: 25px; margin-bottom: 15px;">Wichtige Endpoints</h3>
+            <div class="endpoint">📡 Orchestrator: http://178.104.51.123:8000</div>
+            <div class="endpoint">🎯 Dify Platform: http://difyv2.activi.io (Port 80/3080)</div>
+            <div class="endpoint">🧠 HippoRAG: http://localhost:8001</div>
+            <div class="endpoint">💾 Mem0 Server: http://localhost:8002</div>
+            <div class="endpoint">🎨 OpenMemory Dashboard: http://localhost:3000</div>
+            <div class="endpoint">📦 OpenMemory API: http://localhost:8765</div>
+            <div class="endpoint">🔵 Qdrant Vector Store: http://localhost:16333</div>
+            <div class="endpoint">🟣 Neo4j Graph: http://localhost:7474 (UI) / 7687 (Bolt)</div>
+            <div class="endpoint">🦙 Ollama: http://localhost:11434</div>
+        </section>
+        
+        <section>
+            <h2>🤖 Agent System (11 Agenten)</h2>
+            <div class="agents-grid">
+                <div class="agent-badge">🏗️ architect</div>
+                <div class="agent-badge">💻 coder</div>
+                <div class="agent-badge">🧪 tester</div>
+                <div class="agent-badge">👁️ reviewer</div>
+                <div class="agent-badge">🚀 devops</div>
+                <div class="agent-badge">📝 docs</div>
+                <div class="agent-badge">🔒 security</div>
+                <div class="agent-badge">📋 planner</div>
+                <div class="agent-badge">🐛 debug</div>
+                <div class="agent-badge">⚙️ worker</div>
+                <div class="agent-badge">🎓 coach</div>
+            </div>
+            <p style="margin-top: 15px; color: #94a3b8; font-size: 0.9em;">User ID Format: <code style="background: #0f1419; padding: 2px 6px; border-radius: 3px;">cct-{agent}</code></p>
+        </section>
+        
+        <section>
+            <h2>🐳 Docker & Services</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Systemd Service</th>
+                        <th>Status</th>
+                        <th>Port/Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>orchestrator</td>
+                        <td><span class="status-active">● Active</span></td>
+                        <td>FastAPI v3.0.0 / Port 8000</td>
+                    </tr>
+                    <tr>
+                        <td>hipporag</td>
+                        <td><span class="status-active">● Active</span></td>
+                        <td>Graph-RAG / Port 8001</td>
+                    </tr>
+                    <tr>
+                        <td>aai-coach-telegram</td>
+                        <td><span class="status-active">● Active</span></td>
+                        <td>Telegram Integration / Chat ID: 8212488253</td>
+                    </tr>
+                    <tr>
+                        <td>ollama</td>
+                        <td><span class="status-active">● Active</span></td>
+                        <td>LLM Inference / Port 11434</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3 style="color: #7dd3fc; margin-top: 30px; margin-bottom: 15px;">Docker Container (18 total)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Container</th>
+                        <th>Image</th>
+                        <th>Port(s)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>cct-mem0</td>
+                        <td>mem0:latest</td>
+                        <td>8002</td>
+                        <td><span class="status-active">● Running</span></td>
+                    </tr>
+                    <tr>
+                        <td>cct-mem0-qdrant</td>
+                        <td>qdrant:v1.12.1</td>
+                        <td>16333</td>
+                        <td><span class="status-active">● Running</span></td>
+                    </tr>
+                    <tr>
+                        <td>cct-neo4j</td>
+                        <td>neo4j:latest</td>
+                        <td>7474, 7687</td>
+                        <td><span class="status-active">● Running</span></td>
+                    </tr>
+                    <tr>
+                        <td>cct-ollama</td>
+                        <td>ollama:latest</td>
+                        <td>11434</td>
+                        <td><span class="status-active">● Running</span></td>
+                    </tr>
+                    <tr>
+                        <td>cct-openmemory-api</td>
+                        <td>openmemory-api:latest</td>
+                        <td>8765</td>
+                        <td><span class="status-active">● Running</span></td>
+                    </tr>
+                    <tr>
+                        <td>cct-openmemory-ui</td>
+                        <td>openmemory-ui:latest</td>
+                        <td>3000</td>
+                        <td><span class="status-active">● Running</span></td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #94a3b8; font-style: italic;">+ 12 weitere Container (Dify, Postgres, Redis, etc.)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <section>
+            <h2>📦 LLM Modelle (6 Modelle)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Modell</th>
+                        <th>Einsatz</th>
+                        <th>Dimension</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>nomic-embed-text</td>
+                        <td>OpenMemory Dashboard Embeddings</td>
+                        <td>768d</td>
+                    </tr>
+                    <tr>
+                        <td>qwen3-embedding (x2)</td>
+                        <td>Mem0 Embedding / Semantic Search</td>
+                        <td>4096d</td>
+                    </tr>
+                    <tr>
+                        <td>glm-4.7:cloud</td>
+                        <td>Mem0 Graph Extraction & LLM</td>
+                        <td>–</td>
+                    </tr>
+                    <tr>
+                        <td>minimax-m2.5:cloud</td>
+                        <td>Alternative Cloud LLM</td>
+                        <td>–</td>
+                    </tr>
+                    <tr>
+                        <td>deepseek-v3.2:cloud</td>
+                        <td>Advanced Reasoning Tasks</td>
+                        <td>–</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <section>
+            <h2>🔑 API Integration</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Status</th>
+                        <th>Bemerkung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Hetzner API Key</td>
+                        <td><span class="status-warning">⚠ Leer</span></td>
+                        <td>Denis muss bereitstellen</td>
+                    </tr>
+                    <tr>
+                        <td>Cloudflare Token</td>
+                        <td><span class="status-active">● Konfiguriert</span></td>
+                        <td>Und Zone ID</td>
+                    </tr>
+                    <tr>
+                        <td>OpenAI</td>
+                        <td><span class="status-active">● Konfiguriert</span></td>
+                        <td>API Key gespeichert</td>
+                    </tr>
+                    <tr>
+                        <td>OpenRouter</td>
+                        <td><span class="status-active">● Konfiguriert</span></td>
+                        <td>API Key gespeichert</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <section>
+            <h2>📊 System Metriken</h2>
+            <div class="card-grid">
+                <div class="info-card">
+                    <h3>Git Repository</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Commits heute</span>
+                        <span class="detail-value">6</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Latest Commit</span>
+                        <span class="detail-value">f5ce331</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>Ressourcen</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">RAM Nutzung</span>
+                        <span class="detail-value">6.9Gi / 30Gi (23%)</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Disk Nutzung</span>
+                        <span class="detail-value">35G / 226G (17%)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section>
+            <h2>🔄 Architektur Flow</h2>
+            <div class="info-card">
+                <p style="font-family: 'Courier New', monospace; font-size: 0.9em; line-height: 2;">
+                    <span style="color: #7dd3fc;">Telegram/Dify UI</span><br>
+                    ↓<br>
+                    <span style="color: #06b6d4;">Orchestrator (8000)</span><br>
+                    ↓<br>
+                    <span style="color: #06b6d4;">_call_agent_streaming</span><br>
+                    ↓<br>
+                    <span style="color: #06b6d4;">_call_agent_with_full_rag</span> (RAG Anreicherung)<br>
+                    ↓<br>
+                    <span style="color: #06b6d4;">_self_healing_agent_call</span> (Doctor Agent)<br>
+                    ↓<br>
+                    <span style="color: #06b6d4;">Dify API</span><br>
+                    ↓<br>
+                    <span style="color: #4ade80;">Agent Response</span><br>
+                    ↓<br>
+                    <span style="color: #4ade80;">Self-Learning Save</span>
+                </p>
+            </div>
+        </section>
+        
+        <div class="footer">
+            Cloud Code Team System | Generiert: 16. März 2026 | Hetzner Infrastructure
+        </div>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Memory &amp; RAG</h2>
-    <div style="font-family:'Fira Code',monospace;font-size:0.8rem;color:var(--muted);line-height:1.8">
-      GET  /memory/system<br>
-      GET  /memory/system/{key}<br>
-      PUT  /memory/system<br>
-      DEL  /memory/system/{key}<br>
-      GET  /memory/agent/{agent}<br>
-      PUT  /memory/agent<br>
-      GET  /memory/context<br>
-      GET  /hipporag/health<br>
-      POST /hipporag/query<br>
-      GET  /rag/health
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Doctor Agent</h2>
-    <div style="font-family:'Fira Code',monospace;font-size:0.8rem;color:var(--muted);line-height:1.8">
-      GET  /doctor/status<br>
-      GET  /doctor/diagnose<br>
-      POST /doctor/heal<br>
-      POST /doctor/heal/auto<br>
-      GET  /doctor/heal/log<br>
-      POST /doctor/watchdog/start<br>
-      POST /doctor/watchdog/stop<br>
-      PUT  /doctor/config<br>
-      GET  /doctor/dossier/{agent}<br>
-      GET  /doctor/dossiers<br>
-      POST /doctor/dossier/{agent}/note<br>
-      GET  /doctor/memory
-    </div>
-  </div>
-</div>
-
-<!-- ═══════ 5. SERVICES ═══════ -->
-<div class="section-title">🔧 5. Service-Matrix</div>
-
-<div class="card">
-  <table>
-    <tr><th>Service</th><th>Typ</th><th>Port</th><th>Container/Unit</th><th>Status</th><th>Response</th><th>Zweck</th></tr>
-    <tr><td>Orchestrator</td><td>Systemd</td><td>8000</td><td>orchestrator.service</td><td><span class="badge badge-ok">ACTIVE</span></td><td>—</td><td>API Gateway, Routing, Self-Healing</td></tr>
-    <tr><td>Dify</td><td>Docker</td><td>3080</td><td>docker-nginx-1 → api/worker/web</td><td><span class="badge badge-ok">UP 2d</span></td><td>60ms</td><td>Agent Workflows (11 Apps)</td></tr>
-    <tr><td>Mem0</td><td>Docker</td><td>8002</td><td>cct-mem0</td><td><span class="badge badge-ok">HEALTHY</span></td><td>59ms</td><td>Langzeit-Memory (Vector + Graph)</td></tr>
-    <tr><td>HippoRAG</td><td>Systemd</td><td>8001</td><td>hipporag.service</td><td><span class="badge badge-ok">ACTIVE</span></td><td>69ms</td><td>Graph-basiertes RAG</td></tr>
-    <tr><td>Qdrant (Mem0)</td><td>Docker</td><td>16333</td><td>cct-mem0-qdrant</td><td><span class="badge badge-ok">HEALTHY</span></td><td>45ms</td><td>Vektor-Store für Mem0</td></tr>
-    <tr><td>Qdrant (Dify)</td><td>Docker</td><td>intern</td><td>docker-qdrant-1</td><td><span class="badge badge-ok">UP 2d</span></td><td>—</td><td>Vektor-Store für Dify KBs</td></tr>
-    <tr><td>Neo4j</td><td>Docker</td><td>7474</td><td>neo4j</td><td><span class="badge badge-ok">UP 24h</span></td><td>54ms</td><td>Graph DB (Mem0 + HippoRAG)</td></tr>
-    <tr><td>Ollama</td><td>Nativ</td><td>11434</td><td>ollama.service</td><td><span class="badge badge-ok">ACTIVE</span></td><td>26ms</td><td>LLM Inference (6 Modelle)</td></tr>
-    <tr><td>PostgreSQL</td><td>Docker</td><td>intern</td><td>docker-db_postgres-1</td><td><span class="badge badge-ok">HEALTHY</span></td><td>—</td><td>Dify Metadata</td></tr>
-    <tr><td>Redis</td><td>Docker</td><td>intern</td><td>docker-redis-1</td><td><span class="badge badge-ok">HEALTHY</span></td><td>—</td><td>Dify Cache/Queue</td></tr>
-    <tr><td>Telegram Bot</td><td>Systemd</td><td>—</td><td>aai-coach-telegram.service</td><td><span class="badge badge-ok">ACTIVE</span></td><td>—</td><td>Coach-Agent Frontend</td></tr>
-    <tr style="color:var(--muted)"><td>Plugin Service</td><td>Systemd</td><td>—</td><td>cloud-code-plugin.service</td><td><span class="badge badge-err">DISABLED</span></td><td>—</td><td>Deaktiviert (Handshake-Loop)</td></tr>
-  </table>
-</div>
-
-<!-- ═══════ 6. HEUTIGE ÄNDERUNGEN ═══════ -->
-<div class="section-title">📝 6. Änderungen am 16. März 2026</div>
-
-<div class="card">
-  <table>
-    <tr><th>#</th><th>Änderung</th><th>Datei</th><th>Status</th></tr>
-    <tr><td>1</td><td>Doctor Agent erstellt (Watchdog, Healing, 12 Endpoints)</td><td><code>workflows/doctor_agent.py</code></td><td><span class="badge badge-ok">DEPLOYED</span></td></tr>
-    <tr><td>2</td><td>Self-Healing Wrapper (Monkey-Patch Chain)</td><td><code>main.py</code> (Zeile 745+)</td><td><span class="badge badge-ok">AKTIV</span></td></tr>
-    <tr><td>3</td><td>Krankendossier-System (Mem0 pro Agent)</td><td><code>doctor_agent.py</code> (Zeile 804+)</td><td><span class="badge badge-ok">VERIFIZIERT</span></td></tr>
-    <tr><td>4</td><td>Mem0 Dossier-Format auf konversationell umgestellt</td><td><code>doctor_agent.py</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>5</td><td>Mem0 auf 2 Workers rebuilt</td><td><code>mem0-server/server.py</code></td><td><span class="badge badge-ok">DEPLOYED</span></td></tr>
-    <tr><td>6</td><td>Telegram Bot Token korrigiert (F1)</td><td><code>aai-coach-telegram.service</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>7</td><td>Feedback URL auf localhost:8002 (F2)</td><td><code>main.py</code> (Zeile 420, 455)</td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>8</td><td>Plugin Service deaktiviert (F3)</td><td><code>cloud-code-plugin.service</code></td><td><span class="badge badge-ok">DISABLED</span></td></tr>
-    <tr><td>9</td><td>Agent-Parameter durch Monkey-Patch korrigiert</td><td><code>main.py</code> (Zeile ~175)</td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>10</td><td>Dify Health-Check auf /console/api/setup + 307 akzeptiert</td><td><code>doctor_agent.py</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>11</td><td>Qdrant-Dify aus Doctor Health-Checks entfernt (nur intern)</td><td><code>doctor_agent.py</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>12</td><td>Orchestrator auf 4 Workers (P1 Blocker)</td><td><code>orchestrator.service</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>13</td><td>Dify auf 4 Workers (P2 Blocker)</td><td><code>/opt/dify/docker/.env</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>14</td><td>Neo4j Passwort in Mem0 korrigiert (Graph war nie erreichbar)</td><td><code>mem0-server/server.py</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>15</td><td>save_user_memory() Dual-Write: Mem0 + JSON-Fallback</td><td><code>rag_middleware.py</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>16</td><td>Dossier JSON-Fallback + Merge in get_dossier()</td><td><code>doctor_agent.py</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-    <tr><td>17</td><td>Ollama OLLAMA_NUM_PARALLEL=4 + MAX_LOADED_MODELS=2 (P3 Blocker)</td><td><code>ollama.service</code></td><td><span class="badge badge-ok">FIXED</span></td></tr>
-  </table>
-</div>
-
-<!-- ═══════ 7. SERVER-RESSOURCEN ═══════ -->
-<div class="section-title">🖥️ 7. Server-Ressourcen</div>
-
-<div class="grid grid-3">
-  <div class="card">
-    <h2>Hardware</h2>
-    <div class="stat-row"><span class="stat-label">Provider</span><span class="stat-value">Hetzner CX31</span></div>
-    <div class="stat-row"><span class="stat-label">IP</span><span class="stat-value">178.104.51.123</span></div>
-    <div class="stat-row"><span class="stat-label">CPU</span><span class="stat-value">8 vCPU</span></div>
-    <div class="stat-row"><span class="stat-label">RAM</span><span class="stat-value">30 GB</span></div>
-    <div class="stat-row"><span class="stat-label">Disk</span><span class="stat-value">226 GB</span></div>
-  </div>
-  <div class="card">
-    <h2>Auslastung</h2>
-    <div class="stat-row"><span class="stat-label">RAM genutzt</span><span class="stat-value">5.4 GB (18%)</span></div>
-    <div class="stat-row"><span class="stat-label">RAM frei</span><span class="stat-value">6.1 GB</span></div>
-    <div class="stat-row"><span class="stat-label">RAM cached</span><span class="stat-value">19 GB</span></div>
-    <div class="stat-row"><span class="stat-label">Disk genutzt</span><span class="stat-value">33 GB (16%)</span></div>
-    <div class="stat-row"><span class="stat-label">Disk frei</span><span class="stat-value">183 GB</span></div>
-  </div>
-  <div class="card">
-    <h2>Prozesse</h2>
-    <div class="stat-row"><span class="stat-label">Docker Container</span><span class="stat-value">15 aktiv</span></div>
-    <div class="stat-row"><span class="stat-label">Systemd Services</span><span class="stat-value">3 aktiv</span></div>
-    <div class="stat-row"><span class="stat-label">Ports belegt</span><span class="stat-value">8000-16334</span></div>
-  </div>
-</div>
-
-<div class="timestamp">
-  Aktualisiert: 16. März 2026, 03:50 UTC · 17 Fixes applied · Finale Verifikation: 6/6 Services healthy · 0 kritische Blocker offen
-</div>
-
-</div>
 </body>
 </html>
