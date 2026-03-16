@@ -454,7 +454,7 @@ async def learning_stats():
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(
                 "http://localhost:8002/v1/memories/",
-                headers={"Authorization": f"Token {MEM0_API_KEY}"},
+                # Lokales Mem0 braucht keine Auth
                 params={"user_id": "cct-errors"}
             )
             if resp.status_code == 200:
@@ -673,7 +673,21 @@ async def _call_agent_with_full_rag(api_key, query, user,
     )
     auto_learn(user_id=user, user_message=query)
     logger.info(f"RAG Middleware: enriched {len(query)} -> {len(enriched_query)} chars for {agent}")
-    return await _original_call_agent(api_key, enriched_query, user, conversation_id, inputs)
+    result = await _original_call_agent(api_key, enriched_query, user, conversation_id, inputs, agent)
+
+    # === SELF-LEARNING: Agent-Antwort automatisch in Memory speichern ===
+    try:
+        answer = result.get("answer", "")
+        if answer and len(answer) > 20:
+            # Kompakte Zusammenfassung fuer Memory
+            summary = f"Agent {agent} wurde gefragt: {query[:200]}. Antwort-Laenge: {len(answer)} Zeichen."
+            from rag_middleware import save_user_memory
+            save_user_memory(f"cct-{agent}", summary)
+            logger.info(f"Self-Learning: saved interaction for cct-{agent}")
+    except Exception as sl_err:
+        logger.warning(f"Self-Learning failed for {agent}: {sl_err}")
+
+    return result
 
 _call_agent_streaming = _call_agent_with_full_rag
 
@@ -740,6 +754,67 @@ if _os.path.isdir(_workflow_dir):
             except Exception as _e:
                 logger.error(f"Workflow {_mod_name} konnte nicht geladen werden: {_e}")
     logger.info(f"Workflow-Module: {len(_loaded)} geladen ({', '.join(_loaded)})")
+
+
+@app.get("/memories/shared")
+async def shared_memories(query: str = "", limit: int = 10):
+    """Read memories across ALL agents (shared namespace)"""
+    import httpx
+    all_memories = []
+    agent_ids = [f"cct-{a}" for a in AGENT_KEYS.keys()]
+    
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        for uid in agent_ids:
+            try:
+                if query:
+                    resp = await client.post(
+                        "http://localhost:8002/v1/memories/search/",
+                        json={"query": query, "user_id": uid, "limit": 5}
+                    )
+                else:
+                    resp = await client.get(
+                        "http://localhost:8002/v1/memories/",
+                        params={"user_id": uid}
+                    )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    entries = data.get("results", data) if isinstance(data, dict) else data
+                    if isinstance(entries, list):
+                        for e in entries:
+                            if isinstance(e, dict):
+                                e["_source_agent"] = uid
+                        all_memories.extend(entries)
+            except Exception:
+                continue
+    
+    # Sort by relevance or recency, limit
+    all_memories = all_memories[:limit]
+    return {"memories": all_memories, "total": len(all_memories), "agents_queried": len(agent_ids)}
+
+
+@app.get("/memories/{agent}")
+async def agent_memories(agent: str, query: str = ""):
+    """Read memories for a specific agent"""
+    import httpx
+    user_id = f"cct-{agent}"
+    
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            if query:
+                resp = await client.post(
+                    "http://localhost:8002/v1/memories/search/",
+                    json={"query": query, "user_id": user_id, "limit": 10}
+                )
+            else:
+                resp = await client.get(
+                    "http://localhost:8002/v1/memories/",
+                    params={"user_id": user_id}
+                )
+            if resp.status_code == 200:
+                data = resp.json()
+                return {"agent": agent, "user_id": user_id, "memories": data}
+        except Exception as e:
+            return {"agent": agent, "error": str(e)}
 
 
 # ══════════════════════════════════════════════════════════════
