@@ -24,7 +24,7 @@ server:
 
 hetzner:
   # ⚠ MANUELL: console.hetzner.cloud > API-Tokens
-  api_token: ""
+  api_token: "ENV:HETZNER_API_KEY"
   ssh_key_name: "cloud-code-team"
 
 domain:
@@ -33,8 +33,8 @@ domain:
 
 cloudflare:
   # ⚠ MANUELL: dash.cloudflare.com > activi.io > Overview
-  api_token: ""
-  zone_id: ""
+  api_token: "ENV:CLOUDFLARE_TOKEN"
+  zone_id: "ENV:CLOUDFLARE_ZONE_ID"
 
 # ──────────────────────────────────────────
 # PHASE 1: DIFY KONFIGURATION
@@ -67,10 +67,10 @@ redis:
 llm:
   openai:
     # ⚠ MANUELL: platform.openai.com > API Keys
-    api_key: ""
+    api_key: "ENV:OPENAI_API_KEY"
   openrouter:
     # ⚠ MANUELL: openrouter.ai > Keys
-    api_key: ""
+    api_key: "ENV:OPENROUTER_API_KEY"
     base_url: "https://openrouter.ai/api/v1"
   ollama:
     base_url: "http://localhost:11434"
@@ -102,6 +102,7 @@ qdrant:
 # ──────────────────────────────────────────
 
 telegram:
+  chat_id: "8212488253"
   token: "8718856271:AAHKkOplIj0bgZ3sGa15cLfEbzoSMzpHj4o"
 
 dify_api:

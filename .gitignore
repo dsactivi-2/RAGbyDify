@@ -32,3 +32,6 @@ data/
 neo4j/data/
 neo4j/logs/
 *.bak*
+openmemory-run.sh
+openmemory/
+config-sync/config.yaml.real
