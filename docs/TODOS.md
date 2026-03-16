@@ -216,3 +216,8 @@ Stand: 16.03.2026
 | Phase 9 | 5 | 0 | Neue Features |
 | Erledigt S4b | - | 30+ | Ollama Cloud, 4-Tier, Langfuse, Security, systemd, Scripts, Docs |
 | Erledigt frueher | - | 25+ | Mem0 Migration, Workflows, SDKs, Graph, etc. |
+
+### Mem0 MCP Vector-Dimension Fix
+- [x] mem0_mcp_selfhosted Qdrant Collection von 1024 auf 4096 Dim. neu erstellt
+- [x] Claude Desktop Config: LLM von glm-4.7:cloud auf minimax-m2.5:cloud umgestellt
+- [x] Claude Desktop Config: MEM0_GRAPH_STORE_PROVIDER + MEM0_NEO4J_* Variablen ergaenzt

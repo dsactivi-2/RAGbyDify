@@ -168,3 +168,11 @@ Dify Plugins haben eigene isolierte venvs in /opt/dify/docker/volumes/plugin_dae
 - URL: https://github.com/dsactivi-2/RAGbyDify
 - Auth: SSH Key (ed25519)
 - Branch: main
+
+## Qdrant Collections (cct-mem0-qdrant, Port 16333)
+| Collection | Dimension | Points | Zweck |
+|-----------|-----------|--------|-------|
+| mem0_memories | 4096 (Cosine) | 81 | Haupt-Memory (cct-mem0 Server) |
+| mem0_mcp_selfhosted | 4096 (Cosine) | 0 | Mem0 MCP (Claude Desktop/Code) |
+| mem0_test_graph | - | - | Test Collection |
+| mem0migrations | - | - | Migration Tracking |

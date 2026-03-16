@@ -160,6 +160,10 @@ KI-Multi-Agent-System basierend auf Dify v1.13.0 (Self-Hosted) mit 12 spezialisi
 |-- rag_middleware.py           # RAG Middleware (Original)
 |-- backup.sh                  # Taegliches Backup Script
 +-- .github/workflows/ci.yml  # GitHub Actions CI
+|-- extract_entities.py      # Entity-Extraktion fuer Neo4j
+|-- locustfile.py             # Load Testing
+|-- rag_client.py             # RAG Client Library
+|-- 04-verify-system.sh       # System-Verifikation
 ```
 
 ## systemd Services
