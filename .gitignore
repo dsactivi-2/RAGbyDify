@@ -1,37 +1,31 @@
-# Python
+
+backups/
+# Backups
+*.bak*
+build/
+config-sync/config.yaml.real
+data/
+# Databases
+# Data directory (runtime data)
+*.db
+dist/
+.DS_Store
+*.egg
+*.egg-info/
+*.env
+.env
+# Environment
+# IDE
+.idea/
+neo4j/data/
+# Neo4j data
+neo4j/logs/
+openmemory/
+openmemory-run.sh
+# OS
 __pycache__/
 *.py[cod]
 *.pyo
-*.egg-info/
-dist/
-build/
-*.egg
-
-# Databases
-*.db
-
-# Environment
-.env
-*.env
-
-# Backups
-backups/
-
-# OS
-.DS_Store
+# Python
 Thumbs.db
-
-# IDE
 .vscode/
-.idea/
-
-# Data directory (runtime data)
-data/
-
-# Neo4j data
-neo4j/data/
-neo4j/logs/
-*.bak*
-openmemory-run.sh
-openmemory/
-config-sync/config.yaml.real
