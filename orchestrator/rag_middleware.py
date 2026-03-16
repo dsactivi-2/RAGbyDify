@@ -153,7 +153,25 @@ def load_user_memories(user_id: str) -> list:
     return []
 
 def save_user_memory(user_id: str, fact: str):
-    """Save a fact to persistent user memory."""
+    """Save a fact to Mem0 (vector + graph memory) AND local JSON fallback."""
+    # 1. Mem0 speichern (primär)
+    try:
+        import httpx
+        resp = httpx.post(
+            "http://localhost:8002/v1/memories/",
+            json={"messages": [{"role": "user", "content": f"Merke dir: {fact}"}], "user_id": user_id},
+            timeout=30.0,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            count = len(data.get("results", []))
+            logger.info(f"Mem0 memory saved for {user_id}: {count} entries extracted")
+        else:
+            logger.warning(f"Mem0 save HTTP {resp.status_code} for {user_id}")
+    except Exception as e:
+        logger.warning(f"Mem0 save failed for {user_id}: {e}")
+
+    # 2. Lokaler JSON-Fallback (damit alte Logik weiter funktioniert)
     MEMORY_DIR.mkdir(parents=True, exist_ok=True)
     memories = load_user_memories(user_id)
     memories.append({"fact": fact, "ts": int(time.time())})
@@ -163,7 +181,7 @@ def save_user_memory(user_id: str, fact: str):
         with open(_memory_file(user_id), "w") as f:
             json.dump(memories, f, indent=2, ensure_ascii=False)
     except Exception as e:
-        logger.warning(f"Memory save failed for {user_id}: {e}")
+        logger.warning(f"Local memory save failed for {user_id}: {e}")
 
 def get_user_memory_context(user_id: str) -> str:
     """Get formatted user memory string."""

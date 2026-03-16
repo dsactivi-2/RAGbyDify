@@ -87,7 +87,7 @@ MEM0_CONFIG = {
         "config": {
             "url": os.getenv("NEO4J_URI", "bolt://neo4j:7687"),
             "username": os.getenv("NEO4J_USER", "neo4j"),
-            "password": os.getenv("NEO4J_PASSWORD", "bd6a6b0f3a42f7b9a215ea9beffdc9ea"),
+            "password": os.getenv("NEO4J_PASSWORD", "22e58741703f24f1913550c9a8a51c99"),
         }
     },
 }
@@ -445,4 +445,4 @@ if __name__ == "__main__":
     host = os.getenv("MEM0_HOST", "0.0.0.0")
     port = int(os.getenv("MEM0_PORT", "8002"))
     logger.info("🚀 Starting Mem0 Local API Server on %s:%d", host, port)
-    uvicorn.run(app, host=host, port=port, log_level=LOG_LEVEL.lower())
+    uvicorn.run("server:app", host=host, port=port, log_level=LOG_LEVEL.lower(), workers=2)

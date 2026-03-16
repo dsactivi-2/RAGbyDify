@@ -87,7 +87,7 @@ async def health():
 
 async def _call_agent_streaming(api_key: str, query: str, user: str,
                                  conversation_id: str = "",
-                                 inputs: Optional[Dict] = None) -> Dict:
+                                 inputs: Optional[Dict] = None, agent: str = "worker") -> Dict:
     """
     Call a Dify Chatflow agent using streaming mode and extract the LLM output
     from node_finished events. This bypasses the Answer-Node template bug.
@@ -175,7 +175,8 @@ async def run_task(req: TaskRequest):
             query=req.query,
             user=req.user,
             conversation_id=req.conversation_id or "",
-            inputs=req.inputs
+            inputs=req.inputs,
+            agent=req.agent
         )
         return TaskResponse(
             agent=req.agent,
@@ -395,7 +396,7 @@ async def process_feedback(req: FeedbackRequest):
     MEM0_ORG_ID = os.getenv("MEM0_ORG_ID", "")
     MEM0_PROJECT_ID = os.getenv("MEM0_PROJECT_ID", "")
 
-    if not all([MEM0_API_KEY, MEM0_ORG_ID, MEM0_PROJECT_ID]):
+    if False:  # Local Mem0 braucht keine Keys
         return FeedbackResponse(status="error", action="missing_env", memory_saved=False)
 
     if req.rating == "positive":
@@ -417,16 +418,16 @@ async def process_feedback(req: FeedbackRequest):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                "https://api.mem0.ai/v1/memories/",
+                "http://localhost:8002/v1/memories/",
                 headers={
-                    "Authorization": f"Token {MEM0_API_KEY}",
+                    # Auth nicht noetig fuer lokales Mem0
                     "Content-Type": "application/json"
                 },
                 json={
                     "messages": [{"role": "user", "content": memory_text}],
                     "user_id": namespace,
-                    "org_id": MEM0_ORG_ID,
-                    "project_id": MEM0_PROJECT_ID
+                    # org_id nicht noetig fuer lokales Mem0
+                    # project_id nicht noetig fuer lokales Mem0
                 }
             )
             if resp.status_code in (200, 201):
@@ -452,7 +453,7 @@ async def learning_stats():
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(
-                "https://api.mem0.ai/v1/memories/",
+                "http://localhost:8002/v1/memories/",
                 headers={"Authorization": f"Token {MEM0_API_KEY}"},
                 params={"user_id": "cct-errors"}
             )
@@ -739,3 +740,57 @@ if _os.path.isdir(_workflow_dir):
             except Exception as _e:
                 logger.error(f"Workflow {_mod_name} konnte nicht geladen werden: {_e}")
     logger.info(f"Workflow-Module: {len(_loaded)} geladen ({', '.join(_loaded)})")
+
+
+# ══════════════════════════════════════════════════════════════
+# DOCTOR AGENT — SELF-HEALING INTEGRATION
+# Wraps alle Agent-Calls mit automatischem Retry + Healing
+# ══════════════════════════════════════════════════════════════
+
+try:
+    from workflows.doctor_agent import (
+        state as doctor_state,
+        self_healing_call,
+        doctor_startup,
+    )
+
+    # Self-Healing um den Agent-Call wrappen
+    _pre_healing_call = _call_agent_streaming
+
+    async def _self_healing_agent_call(api_key, query, user,
+                                        conversation_id="",
+                                        inputs=None,
+                                        agent="worker"):
+        """Agent-Call mit automatischem Self-Healing bei Fehlern."""
+        return await self_healing_call(
+            original_fn=_pre_healing_call,
+            api_key=api_key,
+            query=query,
+            user=user,
+            conversation_id=conversation_id,
+            inputs=inputs,
+            agent=agent,
+            max_retries=2,
+        )
+
+    _call_agent_streaming = _self_healing_agent_call
+    logger.info("Self-Healing aktiviert fuer alle Agent-Calls")
+
+    # Doctor Startup Hook (Watchdog starten)
+    _prev_startup_fn = None
+    if app.router.on_startup:
+        _prev_startup_fn = app.router.on_startup[-1]
+
+    async def _startup_with_doctor():
+        if _prev_startup_fn:
+            await _prev_startup_fn()
+        await doctor_startup()
+
+    app.router.on_startup.clear()
+    app.add_event_handler("startup", _startup_with_doctor)
+    logger.info("Doctor Agent Startup-Hook registriert")
+
+except ImportError as _ie:
+    logger.warning("Doctor Agent nicht verfuegbar: %s", _ie)
+except Exception as _de:
+    logger.error("Doctor Agent Fehler: %s", _de)
