@@ -74,7 +74,7 @@ Fix in main.py: `answer = data.get("response", "") or data.get("thinking", "")`
 *neo4j.service ist enabled und startet beim naechsten Reboot automatisch. Aktuell laeuft Neo4j noch via docker-compose.
 
 ### orchestrator.service Details
-- Nutzt EnvironmentFile=/opt/cloud-code/orchestrator/.env (alle 22 Keys)
+- Nutzt EnvironmentFile=/opt/cloud-code/orchestrator/.env (alle 20 Keys)
 - ExecStart: /usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 - Restart=on-failure, RestartSec=5
 
@@ -89,7 +89,7 @@ Fix in main.py: `answer = data.get("response", "") or data.get("thinking", "")`
 
 ## Orchestrator v3.0 (main.py, 1317 Zeilen)
 - FastAPI + Uvicorn auf Port 8000
-- .env Datei mit allen Secrets (/opt/cloud-code/orchestrator/.env, 22 Eintraege)
+- .env Datei mit allen Secrets (/opt/cloud-code/orchestrator/.env, 20 Eintraege)
 - dotenv Laden: `from dotenv import load_dotenv; load_dotenv()`
 - 4-Tier AGENT_MODEL_CONFIG (Ollama Cloud)
 - OpenRouter Fallback (FALLBACK_MODELS Mapping)

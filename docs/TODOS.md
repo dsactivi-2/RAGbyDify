@@ -21,7 +21,7 @@ Stand: 16.03.2026
 
 ### Dify Agent Keys Extraktion
 - [x] Alle 12 Agent API-Keys aus Dify PostgreSQL extrahiert
-- [x] .env Datei erstellt mit allen Keys (22 Eintraege)
+- [x] .env Datei erstellt mit allen Keys (20 Eintraege)
 - [x] dotenv Laden in main.py integriert
 
 ### Langfuse v4 Tracing

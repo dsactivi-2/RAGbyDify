@@ -130,7 +130,7 @@ KI-Multi-Agent-System basierend auf Dify v1.13.0 (Self-Hosted) mit 12 spezialisi
 /opt/cloud-code/
 |-- orchestrator/
 |   |-- main.py               # FastAPI Orchestrator v3.0 (1317 Zeilen)
-|   |-- .env                   # Alle Keys (22 Eintraege)
+|   |-- .env                   # Alle Keys (20 Eintraege)
 |   +-- cct_workflows/         # Workflow-Module (umbenannt von workflows/)
 |       |-- auto_doc.py, chain.py, code_gen.py, debug_pipeline.py
 |       |-- deep_rag.py, doctor_agent.py, planning.py
@@ -181,7 +181,7 @@ KI-Multi-Agent-System basierend auf Dify v1.13.0 (Self-Hosted) mit 12 spezialisi
 
 ## Environment-Konfiguration
 
-Alle Secrets in `/opt/cloud-code/orchestrator/.env` (22 Eintraege):
+Alle Secrets in `/opt/cloud-code/orchestrator/.env` (20 Eintraege):
 - 12 Dify Agent API-Keys (AGENT_{ROLE}_KEY)
 - DIFY_API_URL
 - OLLAMA_CLOUD_URL

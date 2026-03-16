@@ -174,7 +174,7 @@ sleep 3 && curl -s http://127.0.0.1:8001/health
 
 ## 5. Environment-Konfiguration
 
-Alle Secrets liegen in `/opt/cloud-code/orchestrator/.env` (22 Eintraege):
+Alle Secrets liegen in `/opt/cloud-code/orchestrator/.env` (20 Eintraege):
 - 12x AGENT_{ROLE}_KEY (Dify Agent API-Keys)
 - DIFY_API_URL
 - OLLAMA_CLOUD_URL
@@ -324,7 +324,7 @@ docker compose -f docker-compose.mem0.yml up -d
 | Datei | Zweck | Zeilen |
 |-------|-------|--------|
 | /opt/cloud-code/orchestrator/main.py | Orchestrator Kern | 1317 |
-| /opt/cloud-code/orchestrator/.env | Alle Secrets | 22 Eintraege |
+| /opt/cloud-code/orchestrator/.env | Alle Secrets | 20 Eintraege |
 | /opt/cloud-code/orchestrator/cct_workflows/ | 10 Workflow-Module | div. |
 | /opt/cloud-code/hipporag/main.py | HippoRAG Service | div. |
 | /opt/cloud-code/rag_middleware.py | RAG Middleware | div. |
