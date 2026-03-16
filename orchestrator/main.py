@@ -758,36 +758,41 @@ if _os.path.isdir(_workflow_dir):
 
 @app.get("/memories/shared")
 async def shared_memories(query: str = "", limit: int = 10):
-    """Read memories across ALL agents (shared namespace)"""
+    """Read memories across ALL agents (shared namespace) — parallel fetch"""
     import httpx
-    all_memories = []
+    import asyncio
     agent_ids = [f"cct-{a}" for a in AGENT_KEYS.keys()]
-    
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        for uid in agent_ids:
-            try:
-                if query:
-                    resp = await client.post(
-                        "http://localhost:8002/v1/memories/search/",
-                        json={"query": query, "user_id": uid, "limit": 5}
-                    )
-                else:
-                    resp = await client.get(
-                        "http://localhost:8002/v1/memories/",
-                        params={"user_id": uid}
-                    )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    entries = data.get("results", data) if isinstance(data, dict) else data
-                    if isinstance(entries, list):
-                        for e in entries:
-                            if isinstance(e, dict):
-                                e["_source_agent"] = uid
-                        all_memories.extend(entries)
-            except Exception:
-                continue
-    
-    # Sort by relevance or recency, limit
+
+    async def fetch_agent(client, uid):
+        try:
+            if query:
+                resp = await client.post(
+                    "http://localhost:8002/v1/memories/search/",
+                    json={"query": query, "user_id": uid, "limit": 3}
+                )
+            else:
+                resp = await client.get(
+                    "http://localhost:8002/v1/memories/",
+                    params={"user_id": uid}
+                )
+            if resp.status_code == 200:
+                data = resp.json()
+                entries = data.get("results", data) if isinstance(data, dict) else data
+                if isinstance(entries, list):
+                    for e in entries:
+                        if isinstance(e, dict):
+                            e["_source_agent"] = uid
+                    return entries
+        except Exception:
+            pass
+        return []
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        results = await asyncio.gather(*[fetch_agent(client, uid) for uid in agent_ids])
+
+    all_memories = []
+    for entries in results:
+        all_memories.extend(entries)
     all_memories = all_memories[:limit]
     return {"memories": all_memories, "total": len(all_memories), "agents_queried": len(agent_ids)}
 
