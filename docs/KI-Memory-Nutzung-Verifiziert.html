@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Code Team — KI &amp; Memory Nutzungsübersicht (Verifiziert)</title>
+<style>
+:root {
+  --bg: #0a0e17; --surface: #111827; --card: #1a2332;
+  --border: #2d3748; --text: #e2e8f0; --muted: #94a3b8;
+  --green: #10b981; --red: #ef4444; --amber: #f59e0b;
+  --blue: #3b82f6; --purple: #8b5cf6; --cyan: #06b6d4;
+  --green-bg: rgba(16,185,129,0.1); --red-bg: rgba(239,68,68,0.1);
+  --amber-bg: rgba(245,158,11,0.1); --blue-bg: rgba(59,130,246,0.1);
+  --purple-bg: rgba(139,92,246,0.1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Inter','Segoe UI',sans-serif; line-height:1.6; padding:2rem; }
+.container { max-width:1500px; margin:0 auto; }
+h1 { font-size:2rem; margin-bottom:0.3rem; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.subtitle { color:var(--muted); margin-bottom:2rem; font-size:0.95rem; }
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; }
+.badge-ok { background:var(--green-bg); color:var(--green); border:1px solid var(--green); }
+.badge-warn { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber); }
+.badge-err { background:var(--red-bg); color:var(--red); border:1px solid var(--red); }
+.badge-info { background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); }
+.badge-purple { background:var(--purple-bg); color:var(--purple); border:1px solid var(--purple); }
+
+.grid { display:grid; gap:1.5rem; }
+.grid-2 { grid-template-columns:1fr 1fr; }
+.grid-3 { grid-template-columns:1fr 1fr 1fr; }
+@media(max-width:900px){ .grid-2,.grid-3 { grid-template-columns:1fr; } }
+
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; }
+.card h2 { font-size:1.1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; }
+.card h3 { font-size:0.95rem; color:var(--cyan); margin:1rem 0 0.5rem; }
+
+.stat-row { display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
+.stat-row:last-child { border-bottom:none; }
+.stat-label { color:var(--muted); }
+.stat-value { font-weight:600; font-family:'Fira Code',monospace; }
+
+table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+th { text-align:left; padding:0.5rem; border-bottom:2px solid var(--border); color:var(--cyan); font-weight:600; }
+td { padding:0.5rem; border-bottom:1px solid var(--border); }
+tr:hover { background:rgba(59,130,246,0.05); }
+
+.proof { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem; margin:0.5rem 0; font-family:'Fira Code',monospace; font-size:0.8rem; white-space:pre-wrap; color:var(--green); overflow-x:auto; max-height:200px; overflow-y:auto; }
+.proof-label { color:var(--amber); font-size:0.75rem; font-weight:600; margin-bottom:0.3rem; text-transform:uppercase; letter-spacing:0.05em; }
+
+.flow { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin:0.8rem 0; font-size:0.85rem; }
+.flow-step { background:var(--surface); border:1px solid var(--border); padding:0.3rem 0.8rem; border-radius:6px; }
+.flow-arrow { color:var(--cyan); font-weight:bold; }
+
+.section-title { font-size:1.4rem; margin:2.5rem 0 1rem; padding-bottom:0.5rem; border-bottom:2px solid var(--border); display:flex; align-items:center; gap:0.5rem; }
+
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+.kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.2rem; text-align:center; }
+.kpi-value { font-size:2rem; font-weight:700; font-family:'Fira Code',monospace; }
+.kpi-label { font-size:0.8rem; color:var(--muted); margin-top:0.3rem; }
+.kpi-green .kpi-value { color:var(--green); }
+.kpi-blue .kpi-value { color:var(--blue); }
+.kpi-purple .kpi-value { color:var(--purple); }
+.kpi-cyan .kpi-value { color:var(--cyan); }
+.kpi-amber .kpi-value { color:var(--amber); }
+.kpi-red .kpi-value { color:var(--red); }
+
+/* Matrix table */
+.matrix { font-size:0.8rem; }
+.matrix th, .matrix td { text-align:center; padding:0.4rem 0.3rem; min-width:70px; }
+.matrix th { font-size:0.7rem; writing-mode:vertical-lr; transform:rotate(180deg); height:120px; vertical-align:bottom; }
+.matrix th:first-child { writing-mode:horizontal-tb; transform:none; text-align:left; height:auto; }
+.matrix td:first-child { text-align:left; font-weight:600; min-width:100px; }
+.matrix .ok { color:var(--green); }
+.matrix .no { color:var(--red); opacity:0.6; }
+.matrix .defekt { color:var(--red); font-weight:700; font-size:0.7rem; }
+.matrix .group-header { background:var(--surface); color:var(--cyan); font-size:0.75rem; font-weight:600; text-align:center !important; }
+.matrix .mem-count { color:var(--green); font-family:'Fira Code',monospace; font-size:0.75rem; }
+.matrix .agent-warn { color:var(--amber); font-size:0.7rem; }
+
+.timestamp { text-align:right; color:var(--muted); font-size:0.8rem; margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Cloud Code Team — KI &amp; Memory Nutzungsübersicht</h1>
+<p class="subtitle">Live-verifiziert am 16. März 2026, 04:00 UTC · Server 178.104.51.123 (Hetzner CX31, 8 vCPU, 30 GB RAM)</p>
+
+<!-- ═══════════ KPI DASHBOARD ═══════════ -->
+<div class="kpi-grid">
+  <div class="kpi kpi-green"><div class="kpi-value">6/6</div><div class="kpi-label">Services Healthy</div></div>
+  <div class="kpi kpi-blue"><div class="kpi-value">6</div><div class="kpi-label">LLM Modelle (Ollama)</div></div>
+  <div class="kpi kpi-purple"><div class="kpi-value">77</div><div class="kpi-label">Mem0 Vektoren (4096d)</div></div>
+  <div class="kpi kpi-cyan"><div class="kpi-value">44 / 57</div><div class="kpi-label">Neo4j Nodes / Rels</div></div>
+  <div class="kpi kpi-amber"><div class="kpi-value">11+1</div><div class="kpi-label">AI Agenten + Doctor</div></div>
+  <div class="kpi kpi-green"><div class="kpi-value">42</div><div class="kpi-label">Agent-Memories gesamt</div></div>
+  <div class="kpi kpi-blue"><div class="kpi-value">69</div><div class="kpi-label">API Endpoints</div></div>
+  <div class="kpi kpi-purple"><div class="kpi-value">17</div><div class="kpi-label">Fixes heute</div></div>
+</div>
+
+<!-- ═══════════ SECTION 1: LLM MODELLE ═══════════ -->
+<div class="section-title">🧠 1. LLM-Modelle (Ollama)</div>
+
+<div class="card">
+  <h2>3-Tier Modell-Architektur</h2>
+  <table>
+    <tr><th>Modell</th><th>Tier</th><th>Zweck</th><th>Größe</th><th>Status</th></tr>
+    <tr><td><strong>minimax-m2.5:cloud</strong></td><td>Tier 1 — Code</td><td>Primär-LLM für alle Code-Agenten</td><td>Cloud-Proxy</td><td><span class="badge badge-ok">AKTIV</span></td></tr>
+    <tr><td><strong>glm-4.7:cloud</strong></td><td>Tier 2 — Multi</td><td>Mem0 Extraktion, Multi-Task</td><td>Cloud-Proxy</td><td><span class="badge badge-ok">AKTIV</span></td></tr>
+    <tr><td><strong>deepseek-v3.2:cloud</strong></td><td>Tier 3 — Günstig</td><td>Fallback, einfache Tasks</td><td>Cloud-Proxy</td><td><span class="badge badge-ok">AKTIV</span></td></tr>
+    <tr><td><strong>qwen3-embedding:latest</strong></td><td>Embedding</td><td>Mem0 Vektor-Embedding (4096d)</td><td>4.7 GB lokal</td><td><span class="badge badge-ok">LOKAL</span></td></tr>
+    <tr><td><strong>qwen3-embedding:0.6b</strong></td><td>Embedding Light</td><td>Schnelles Fallback-Embedding</td><td>0.6 GB lokal</td><td><span class="badge badge-ok">LOKAL</span></td></tr>
+    <tr><td><strong>nomic-embed-text:latest</strong></td><td>Embedding Alt</td><td>HippoRAG Embedding</td><td>0.3 GB lokal</td><td><span class="badge badge-ok">LOKAL</span></td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:0.82rem;margin-top:0.8rem">Ollama-Konfiguration: <code>OLLAMA_NUM_PARALLEL=4</code>, <code>OLLAMA_MAX_LOADED_MODELS=2</code> — 4 parallele Requests, 3x Speedup verifiziert.</p>
+</div>
+
+<!-- ═══════════ SECTION 2: AGENT DIRECTORY ═══════════ -->
+<div class="section-title">👥 2. Agent-Verzeichnis mit Dify-Workflows</div>
+
+<div class="card">
+  <h2>Gruppe A — Aktive Agents via Orchestrator /task</h2>
+  <table>
+    <tr><th>Agent</th><th>Dify-Name</th><th>Workflow-Typ</th><th>LLM</th><th>Status</th><th>KB Docs</th><th>Mem0 user_id</th><th>Memories</th></tr>
+    <tr><td>🏗️ Architect</td><td>Architect Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-architect</code></td><td><strong class="mem-count">2</strong></td></tr>
+    <tr><td>💻 Coder</td><td>Coder Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-coder</code></td><td><strong class="mem-count">9</strong></td></tr>
+    <tr><td>🧪 Tester</td><td>Tester Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-tester</code></td><td><strong class="mem-count">4</strong></td></tr>
+    <tr><td>👁️ Reviewer</td><td>Reviewer Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-reviewer</code></td><td><strong class="mem-count">12</strong></td></tr>
+    <tr><td>🚀 DevOps</td><td>DevOps Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-devops</code></td><td><strong class="mem-count">2</strong></td></tr>
+    <tr><td>📝 Docs</td><td>Docs Agent</td><td>chatflow</td><td>Tier 2 glm-4.7</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-docs</code></td><td><strong class="mem-count">3</strong></td></tr>
+    <tr><td>🔒 Security</td><td>Security Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-security</code></td><td><strong class="mem-count">2</strong></td></tr>
+    <tr><td>📋 Planner</td><td>Planner Agent</td><td>chatflow</td><td>Tier 2 glm-4.7</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-planner</code></td><td><strong class="mem-count">2</strong></td></tr>
+    <tr><td>🐛 Debug</td><td>Debug Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-debug</code></td><td><strong class="mem-count">1</strong></td></tr>
+    <tr><td>⚡ Worker</td><td>Worker Agent</td><td>chatflow</td><td>Tier 1 minimax-m2.5</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-worker</code></td><td><strong class="mem-count">5</strong></td></tr>
+    <tr><td>🎯 Coach</td><td>Coach Agent</td><td>chatflow</td><td>Tier 2 glm-4.7</td><td><span class="badge badge-ok">AKTIV</span></td><td>4</td><td><code>cct-coach</code></td><td><strong class="mem-count">0</strong></td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:0.82rem;margin-top:0.5rem">Gesamt: <strong style="color:var(--green)">42 Agent-Memories</strong> in Mem0 (Qdrant) · Dify External: <code>difyv2.activi.io</code></p>
+</div>
+
+<!-- ═══════════ SECTION 3: MEMORY MATRIX ═══════════ -->
+<div class="section-title">📊 3. Memory-Matrix: Agent-Eigen vs. Shared</div>
+
+<div class="card" style="overflow-x:auto">
+  <table class="matrix">
+    <tr>
+      <th style="writing-mode:horizontal-tb;transform:none;height:auto">Agent</th>
+      <th colspan="4" style="writing-mode:horizontal-tb;transform:none;height:auto;background:var(--purple-bg);color:var(--purple)">Agent-Eigen Memory<br><small>(nur dieser Agent sieht das)</small></th>
+      <th colspan="4" style="writing-mode:horizontal-tb;transform:none;height:auto;background:var(--blue-bg);color:var(--blue)">Shared Memory<br><small>(wird von mehreren geteilt)</small></th>
+      <th style="writing-mode:horizontal-tb;transform:none;height:auto"></th>
+    </tr>
+    <tr>
+      <th style="writing-mode:horizontal-tb;transform:none;height:auto"></th>
+      <th>Mem0 Lesen<br><small>cct-{agent}</small></th>
+      <th>Mem0 Schreiben<br><small>cct-{agent}</small></th>
+      <th>Core Memory<br><small>sqlite agent_memory</small></th>
+      <th>Dify KB<br><small>Dokumente 1536d</small></th>
+      <th>Mem0 Shared Pool<br><small>cloud-code-team</small></th>
+      <th>HippoRAG/Neo4j<br><small>Graph 44 Nodes</small></th>
+      <th>User Memory<br><small>JSON pro User</small></th>
+      <th>Self-Learning<br><small>/feedback → Mem0</small></th>
+      <th></th>
+    </tr>
+    <!-- Group A Header -->
+    <tr><td colspan="10" class="group-header">Gruppe A — Aktive Agents via Orchestrator /task</td></tr>
+    <tr>
+      <td>Architect</td>
+      <td><span class="ok">✔</span> <span class="mem-count">2 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Coder</td>
+      <td><span class="ok">✔</span> <span class="mem-count">9 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Tester</td>
+      <td><span class="ok">✔</span> <span class="mem-count">4 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Reviewer</td>
+      <td><span class="ok">✔</span> <span class="mem-count">12 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>DevOps</td>
+      <td><span class="ok">✔</span> <span class="mem-count">2 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Docs</td>
+      <td><span class="ok">✔</span> <span class="mem-count">3 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Security</td>
+      <td><span class="ok">✔</span> <span class="mem-count">2 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Planner</td>
+      <td><span class="ok">✔</span> <span class="mem-count">2 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Debug</td>
+      <td><span class="ok">✔</span> <span class="mem-count">1 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Worker</td>
+      <td><span class="ok">✔</span> <span class="mem-count">5 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <!-- Coach -->
+    <tr><td colspan="10" class="group-header">Coach — Telegram Bot (eigener Zugriffspfad, nicht via /task)</td></tr>
+    <tr>
+      <td>Coach<br><small class="agent-warn">Bot aktiv</small></td>
+      <td><span class="ok">✔</span> <span class="mem-count">0 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="defekt">DEFEKT</span></td>
+      <td></td>
+    </tr>
+    <!-- Doctor -->
+    <tr><td colspan="10" class="group-header">Sonder-Agents (eigenständig, nicht im Orchestrator)</td></tr>
+    <tr>
+      <td>🩺 Doctor<br><small style="color:var(--green)">Watchdog</small></td>
+      <td><span class="ok">✔</span> <span class="mem-count">6 mem</span></td>
+      <td><span class="ok">✔</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="no">✗</span></td>
+      <td><span class="no">✗</span></td>
+      <td></td>
+    </tr>
+  </table>
+
+  <div style="margin-top:1rem;font-size:0.82rem;color:var(--muted)">
+    <strong>Legende:</strong>
+    <span class="ok">✔</span> = funktioniert &nbsp;
+    <span class="no">✗</span> = nicht implementiert &nbsp;
+    <span class="defekt" style="font-size:0.82rem">DEFEKT</span> = implementiert aber fehlerhaft
+  </div>
+
+  <div style="margin-top:0.8rem;padding:0.8rem;background:var(--green-bg);border:1px solid var(--green);border-radius:8px;font-size:0.85rem;margin-bottom:0.5rem">
+    <strong style="color:var(--green)">✔ HippoRAG &amp; User Memory AKTIV:</strong> Orchestrator-Middleware <code>enrich_for_agent()</code> queried HippoRAG (44 Nodes, Neo4j Graph) und lädt User-Memory (JSON) für jeden Agent-Call via <code>/task</code>. <code>auto_learn()</code> speichert neue Fakten per Dual-Write (Mem0 + JSON).
+  </div>
+  <div style="padding:0.8rem;background:var(--amber-bg);border:1px solid var(--amber);border-radius:8px;font-size:0.85rem;margin-bottom:0.5rem">
+    <strong style="color:var(--amber)">✗ Core Memory &amp; Shared Pool OFFEN:</strong> <code>/memory/system</code> Endpoints existieren, aber kein Dify-Workflow queried sie. Agents teilen kein Shared-Memory — jeder sieht nur seinen eigenen <code>cct-{agent}</code> Namespace.
+  </div>
+  <div style="padding:0.8rem;background:var(--red-bg);border:1px solid var(--red);border-radius:8px;font-size:0.85rem">
+    <strong style="color:var(--red)">DEFEKT Self-Learning:</strong> Der <code>/feedback</code>-Endpoint existiert, aber die Dify-Workflows rufen ihn nicht auf. Feedback wird in main.py verarbeitet, kommt aber nie bei Mem0 an. Lösung: HTTP-Callback-Node am Workflow-Ende.
+  </div>
+</div>
+
+<!-- ═══════════ SECTION 4: MEM0 DETAIL ═══════════ -->
+<div class="section-title">💾 4. Mem0 — Langzeit-Gedächtnis</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>🔧 Architektur</h2>
+    <div class="stat-row"><span class="stat-label">Service</span><span class="stat-value">Mem0 Local (Port 8002)</span></div>
+    <div class="stat-row"><span class="stat-label">Container</span><span class="stat-value">cct-mem0-server <span class="badge badge-ok">HEALTHY</span></span></div>
+    <div class="stat-row"><span class="stat-label">Workers</span><span class="stat-value">2 (uvicorn)</span></div>
+    <div class="stat-row"><span class="stat-label">Vector Store</span><span class="stat-value">Qdrant (Port 16333)</span></div>
+    <div class="stat-row"><span class="stat-label">Graph Store</span><span class="stat-value">Neo4j (Port 7474/7687)</span></div>
+    <div class="stat-row"><span class="stat-label">LLM Extraktion</span><span class="stat-value">glm-4.7:cloud (Ollama)</span></div>
+    <div class="stat-row"><span class="stat-label">Embedding</span><span class="stat-value">qwen3-embedding 7.6B (4096d)</span></div>
+    <div class="stat-row"><span class="stat-label">Collection</span><span class="stat-value">mem0_memories</span></div>
+    <div class="stat-row"><span class="stat-label">Total Vektoren</span><span class="stat-value" style="color:var(--cyan)">77 Punkte</span></div>
+
+    <div class="proof-label">📋 Nachweis: curl http://localhost:8002/health</div>
+    <div class="proof">{"status": "healthy", "service": "mem0-local",
+ "vector_store": "qdrant", "graph_store": "neo4j",
+ "llm": "glm-4.7:cloud"}</div>
+  </div>
+
+  <div class="card">
+    <h2>📁 Top Agent-Memories (Live-Inhalt)</h2>
+    <table>
+      <tr><th>Agent</th><th>Memories</th><th>Beispiel-Erinnerungen</th></tr>
+      <tr><td><strong>Reviewer</strong></td><td style="color:var(--green);font-weight:700">12</td><td style="font-size:0.8rem;color:var(--muted)">Name ist Denis · Massentest 16.03 · Code Reviews = Security-Checks</td></tr>
+      <tr><td><strong>Coder</strong></td><td style="color:var(--green);font-weight:700">9</td><td style="font-size:0.8rem;color:var(--muted)">Modelle minimax/glm/deepseek · Sprache Deutsch · Massentest</td></tr>
+      <tr><td><strong>Worker</strong></td><td style="color:var(--green);font-weight:700">5</td><td style="font-size:0.8rem;color:var(--muted)">Tech-Stack Python/FastAPI/Dify · Python seit 5 Jahren</td></tr>
+      <tr><td><strong>Tester</strong></td><td style="color:var(--green);font-weight:700">4</td><td style="font-size:0.8rem;color:var(--muted)">Python Unit-Tests · pytest + httpx · Sicherheit + Performance</td></tr>
+      <tr><td><strong>Docs</strong></td><td style="color:var(--green);font-weight:700">3</td><td style="font-size:0.8rem;color:var(--muted)">API-Doc Vorlage · Massentest · Deutsch</td></tr>
+      <tr><td><strong>Architect</strong></td><td style="color:var(--green);font-weight:700">2</td><td style="font-size:0.8rem;color:var(--muted)">Massentest · Denis bevorzugt Microservices</td></tr>
+      <tr><td><strong>DevOps</strong></td><td style="color:var(--green);font-weight:700">2</td><td style="font-size:0.8rem;color:var(--muted)">Docker Compose auf Hetzner</td></tr>
+      <tr><td><strong>Security</strong></td><td style="color:var(--green);font-weight:700">2</td><td style="font-size:0.8rem;color:var(--muted)">API Keys nie im Code</td></tr>
+      <tr><td><strong>Planner</strong></td><td style="color:var(--green);font-weight:700">2</td><td style="font-size:0.8rem;color:var(--muted)">Sprint-Länge 2 Wochen</td></tr>
+      <tr><td><strong>Debug</strong></td><td style="color:var(--green);font-weight:700">1</td><td style="font-size:0.8rem;color:var(--muted)">Massentest</td></tr>
+      <tr><td><strong>Coach</strong></td><td style="color:var(--muted)">0</td><td style="font-size:0.8rem;color:var(--muted)">—</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION 5: KRANKENDOSSIER ═══════════ -->
+<div class="section-title">🏥 5. Krankendossier-System (Doctor Agent)</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>📋 Dossier-Namespaces (Mem0 + JSON-Fallback)</h2>
+    <table>
+      <tr><th>Namespace</th><th>user_id</th><th>Mem0</th><th>JSON</th><th>Letzter Event</th></tr>
+      <tr><td>🔵 Architect</td><td><code>doctor-architect</code></td><td><strong style="color:var(--green)">3</strong></td><td>0</td><td>Ausfall + Diagnose + Heilung</td></tr>
+      <tr><td>⚡ Coder</td><td><code>doctor-coder</code></td><td><strong style="color:var(--green)">2</strong></td><td><strong style="color:var(--amber)">2</strong></td><td>Warnung: Timeout</td></tr>
+      <tr><td>🟢 Tester</td><td><code>doctor-tester</code></td><td><strong style="color:var(--green)">1</strong></td><td>0</td><td>Diagnose OK</td></tr>
+      <tr><td>⚪ Reviewer</td><td><code>doctor-reviewer</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr><td>⚪ DevOps</td><td><code>doctor-devops</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr><td>⚪ Docs</td><td><code>doctor-docs</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr><td>⚪ Security</td><td><code>doctor-security</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr><td>⚪ Planner</td><td><code>doctor-planner</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr><td>⚪ Debug</td><td><code>doctor-debug</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr><td>⚪ Worker</td><td><code>doctor-worker</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr><td>⚪ Coach</td><td><code>doctor-coach</code></td><td>0</td><td>0</td><td>—</td></tr>
+      <tr style="background:var(--blue-bg)"><td><strong>🧠 Zentral</strong></td><td><code>doctor-central</code></td><td>0</td><td>0</td><td>LLM verweigert Einträge</td></tr>
+    </table>
+    <p style="color:var(--amber);font-size:0.82rem;margin-top:0.8rem">⚠️ <code>doctor-central</code> hat 0 Mem0-Entries weil glm-4.7 zentrale Einträge als "nicht erinnerungswürdig" bewertet. JSON-Fallback sichert gegen Datenverlust.</p>
+  </div>
+
+  <div class="card">
+    <h2>🧠 Doctor Agent Detail</h2>
+    <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value"><span class="badge badge-ok">HEALTHY</span></span></div>
+    <div class="stat-row"><span class="stat-label">Services Monitored</span><span class="stat-value" style="color:var(--green)">6/6</span></div>
+    <div class="stat-row"><span class="stat-label">Watchdog</span><span class="stat-value"><span class="badge badge-ok">RUNNING (5 min)</span></span></div>
+    <div class="stat-row"><span class="stat-label">Auto-Heal</span><span class="stat-value"><span class="badge badge-ok">ENABLED</span></span></div>
+    <div class="stat-row"><span class="stat-label">Funktionen</span><span class="stat-value">38</span></div>
+    <div class="stat-row"><span class="stat-label">Dossier-Format</span><span class="stat-value">Konversationelles Deutsch</span></div>
+    <div class="stat-row"><span class="stat-label">Speicherung</span><span class="stat-value">Dual-Write (Mem0 + JSON)</span></div>
+
+    <h3>Überwachte Services</h3>
+    <table>
+      <tr><th>Service</th><th>Port</th><th>Status</th><th>Response</th></tr>
+      <tr><td>Mem0</td><td>8002</td><td><span class="badge badge-ok">OK</span></td><td>59ms</td></tr>
+      <tr><td>HippoRAG</td><td>8001</td><td><span class="badge badge-ok">OK</span></td><td>64ms</td></tr>
+      <tr><td>Dify</td><td>3080</td><td><span class="badge badge-ok">OK</span></td><td>49ms</td></tr>
+      <tr><td>Qdrant-Mem0</td><td>16333</td><td><span class="badge badge-ok">OK</span></td><td>35ms</td></tr>
+      <tr><td>Neo4j</td><td>7474</td><td><span class="badge badge-ok">OK</span></td><td>29ms</td></tr>
+      <tr><td>Ollama</td><td>11434</td><td><span class="badge badge-ok">OK</span></td><td>36ms</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION 6: QDRANT + NEO4J ═══════════ -->
+<div class="section-title">🔮 6. Vektor- &amp; Graph-Datenbanken</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Qdrant Vector Store (Port 16333)</h2>
+    <table>
+      <tr><th>Collection</th><th>Vektoren</th><th>Dimension</th><th>Distance</th><th>Verwendung</th></tr>
+      <tr><td><strong>mem0_memories</strong></td><td style="color:var(--green);font-weight:700">77</td><td>4096</td><td>Cosine</td><td>Mem0 Langzeit-Memory</td></tr>
+      <tr><td>mem0migrations</td><td>6</td><td>4096</td><td>Cosine</td><td>Mem0 Schema-Migrations</td></tr>
+      <tr><td>mem0_test_graph</td><td>0</td><td>1536</td><td>Cosine</td><td>Test-Collection (leer)</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:0.82rem;margin-top:0.5rem">Dify hat eine separate Qdrant-Instanz (docker-qdrant-1, nur Docker-intern Port 6333) für KB-Vektoren.</p>
+  </div>
+
+  <div class="card">
+    <h2>Neo4j Graph Database (Port 7474/7687)</h2>
+    <div class="stat-row"><span class="stat-label">Nodes gesamt</span><span class="stat-value" style="color:var(--cyan)">44</span></div>
+    <div class="stat-row"><span class="stat-label">Relationships gesamt</span><span class="stat-value" style="color:var(--cyan)">57</span></div>
+
+    <h3>Node-Labels</h3>
+    <div style="font-size:0.82rem;color:var(--muted)">
+      Agent (10) · Phase (6) · Concept (4) · Document (3) · Bug (2) · Platform (2) · Service (2) · Database (2) · Server (1) · OS (1) · ReverseProxy (1) · Firewall (1) · Security (1) · DNS (1) · Cache (1) · VectorDB (1) · TaskQueue (1) · LLM (1) · MemorySystem (1) · RecallDB (1) · KnowledgeBase (1)
+    </div>
+
+    <h3>Relationship-Typen</h3>
+    <div style="font-size:0.82rem;color:var(--muted)">
+      HOSTS (11) · USES (11) · FOLLOWS (10) · INCLUDES (8) · RUNS (6) · CONTAINS (3) · PROTECTS (2) · PROXIES (1) · ROUTES_TO (1) · COORDINATES (1) · ROUTES_VIA (1) · SUPPORTS (1) · FIXES (1)
+    </div>
+
+    <div style="margin-top:0.8rem;padding:0.6rem;background:var(--amber-bg);border:1px solid var(--amber);border-radius:6px;font-size:0.82rem">
+      <strong>Quelle:</strong> Alle 44 Nodes stammen von <strong>HippoRAG</strong> (nomic-embed-text). Mem0-Graph hat 0 Entities — glm-4.7 kann das strukturierte JSON-Format für Entity-Extraktion nicht produzieren.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION 7: USER MEMORIES ═══════════ -->
+<div class="section-title">👤 7. User-Memories &amp; Dual-Write</div>
+
+<div class="card">
+  <div class="grid grid-2">
+    <div>
+      <h2>Mem0 User-Memories</h2>
+      <table>
+        <tr><th>User</th><th>user_id</th><th>Memories</th><th>Inhalt</th></tr>
+        <tr><td><strong>Denis</strong></td><td><code>denis</code></td><td style="color:var(--green);font-weight:700">2</td><td style="font-size:0.8rem">Denis ist der Projektleiter · Tech-Stack ist Python 3.11, FastAPI, Dify, Mem0, Qdrant</td></tr>
+        <tr><td>Telegram</td><td><code>8212488253</code></td><td>0</td><td style="font-size:0.8rem;color:var(--muted)">Mem0 leer (4 Einträge nur in JSON-Fallback)</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>JSON-Fallback Dateien</h2>
+      <table>
+        <tr><th>Datei</th><th>Einträge</th><th>Zweck</th></tr>
+        <tr><td><code>denis.json</code></td><td>1</td><td>User-Memory Fallback</td></tr>
+        <tr><td><code>8212488253.json</code></td><td>4</td><td>Telegram-User Fallback</td></tr>
+        <tr><td><code>massentest.json</code></td><td>8</td><td>Massentest-Daten</td></tr>
+        <tr><td><code>massentest-parallel.json</code></td><td>11</td><td>Parallel-Test-Daten</td></tr>
+        <tr><td><code>mem0-test-user.json</code></td><td>1</td><td>Test-User</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>Dual-Write Architektur</h3>
+  <div class="flow">
+    <span class="flow-step" style="border-color:var(--green)">save_user_memory()</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step" style="border-color:var(--purple)">① Mem0 POST /v1/memories/ (primär)</span>
+    <span class="flow-arrow">+</span>
+    <span class="flow-step" style="border-color:var(--amber)">② JSON /data/memories/{uid}.json (fallback)</span>
+  </div>
+  <p style="font-size:0.82rem;color:var(--muted)">Implementiert in <code>rag_middleware.py</code> · "Merke dir:"-Prefix für Mem0-Akzeptanz · Max 100 Einträge pro User (Ring-Buffer)</p>
+</div>
+
+<!-- ═══════════ SECTION 8: DATENFLUSS ═══════════ -->
+<div class="section-title">🔄 8. Gesamter KI-Datenfluss</div>
+
+<div class="card">
+  <h2>Request → Response Pipeline</h2>
+  <div style="font-family:'Fira Code',monospace;font-size:0.82rem;line-height:2;color:var(--muted);padding:1rem;background:var(--surface);border-radius:8px;overflow-x:auto">
+<span style="color:var(--green)">User Request</span>
+  │
+  ▼
+<span style="color:var(--blue)">Orchestrator /task</span> (FastAPI, Port 8000, 4 Workers)
+  │
+  ├─ <span style="color:var(--purple)">Self-Healing Wrapper</span> ← Retry 2x, Auto-Diagnose, Dossier-Write
+  │   │
+  │   ├─ <span style="color:var(--cyan)">RAG Enrichment</span> ← enrich_for_agent() + auto_learn()
+  │   │   ├─ HippoRAG Query (Neo4j Graph, nomic-embed, 44 Nodes)
+  │   │   └─ Mem0 Retrieve (Qdrant 4096d, cct-{agent})
+  │   │
+  │   └─ <span style="color:var(--amber)">Dify Workflow</span> (difyv2.activi.io, extern)
+  │       │
+  │       ├─ 1. <span style="color:var(--purple)">Mem0 Retrieve</span> → GET localhost:8002/v1/memories/?user_id=cct-{agent}
+  │       ├─ 2. <span style="color:var(--blue)">KB Search</span> → Dify-Qdrant (Docker-intern, 1536d)
+  │       ├─ 3. <span style="color:var(--cyan)">LLM Call</span> → Ollama → minimax-m2.5 / glm-4.7 / deepseek-v3.2
+  │       ├─ 4. <span style="color:var(--purple)">Mem0 Save</span> → POST localhost:8002/v1/memories/
+  │       │                    → glm-4.7 extrahiert Fakten
+  │       │                    → qwen3-embedding → 4096d Vektor → Qdrant
+  │       └─ 5. <span style="color:var(--green)">Answer</span> → Zurück zum Orchestrator
+  │
+  ├─ <span style="color:var(--red)">Doctor Tracking</span> ← Per-Agent Health, Success Rate
+  │   └─ Bei Failure: Dossier-Write (Mem0 + JSON-Fallback)
+  │
+  └─ <span style="color:var(--green)">Response</span> → User
+
+<span style="color:var(--red)">Background: Watchdog (5 min Intervall)</span>
+  ├─ 6 Service Health Checks (Mem0, HippoRAG, Dify, Qdrant, Neo4j, Ollama)
+  ├─ Auto-Heal bei 2+ consecutive Failures
+  └─ Dossier-Einträge: Dual-Write (Mem0 + /data/dossiers/{agent}.json)
+  </div>
+</div>
+
+<!-- ═══════════ SECTION 9: API ENDPOINTS ═══════════ -->
+<div class="section-title">🔌 9. Memory-relevante API-Endpoints</div>
+
+<div class="card">
+  <table>
+    <tr><th>Endpoint</th><th>Methode</th><th>Beschreibung</th><th>Status</th></tr>
+    <tr><td><code>/memory/system</code></td><td>GET</td><td>Core Memory lesen (zentrale Projekt-Fakten)</td><td><span class="badge badge-warn">NICHT VERDRAHTET</span></td></tr>
+    <tr><td><code>/memory/system/{key}</code></td><td>PUT</td><td>Core Memory schreiben</td><td><span class="badge badge-warn">NICHT VERDRAHTET</span></td></tr>
+    <tr><td><code>/memory/agent/{agent}</code></td><td>GET</td><td>Agent-Memory lesen</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/memory/agent</code></td><td>POST</td><td>Agent-Memory schreiben</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/memory/context</code></td><td>GET</td><td>Memory-Kontext für Agent-Call</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/learn</code></td><td>POST</td><td>Fact zum Mem0 speichern</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/learning/stats</code></td><td>GET</td><td>Lernstatistiken</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/doctor/status</code></td><td>GET</td><td>Doctor + alle Services</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/doctor/dossier/{agent}</code></td><td>GET</td><td>Krankendossier lesen (Mem0 + JSON merged)</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/doctor/dossier/{agent}/note</code></td><td>POST</td><td>Notiz ins Dossier</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/doctor/dossiers</code></td><td>GET</td><td>Alle Dossiers Übersicht</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/doctor/memory</code></td><td>GET</td><td>Zentrale Doctor-Memories</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/doctor/diagnose</code></td><td>GET</td><td>Diagnose aller Services</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/doctor/heal</code></td><td>POST</td><td>Manuelles Healing auslösen</td><td><span class="badge badge-ok">OK</span></td></tr>
+    <tr><td><code>/hipporag/query</code></td><td>POST</td><td>Graph-basierte RAG-Query</td><td><span class="badge badge-ok">OK</span></td></tr>
+  </table>
+  <p style="color:var(--muted);font-size:0.82rem;margin-top:0.5rem">Total: <strong>69 API Endpoints</strong> im Orchestrator (inkl. /workflow/*, /doctor/*, /memory/*)</p>
+</div>
+
+<!-- ═══════════ SECTION 10: INFRASTRUKTUR ═══════════ -->
+<div class="section-title">🖥️ 10. Infrastruktur</div>
+
+<div class="grid grid-3">
+  <div class="card">
+    <h2>Server</h2>
+    <div class="stat-row"><span class="stat-label">Provider</span><span class="stat-value">Hetzner CX31</span></div>
+    <div class="stat-row"><span class="stat-label">IP</span><span class="stat-value">178.104.51.123</span></div>
+    <div class="stat-row"><span class="stat-label">CPU</span><span class="stat-value">8 vCPU</span></div>
+    <div class="stat-row"><span class="stat-label">RAM</span><span class="stat-value">30 GB (11 GB used)</span></div>
+    <div class="stat-row"><span class="stat-label">Disk</span><span class="stat-value">226 GB (34 GB, 16%)</span></div>
+  </div>
+  <div class="card">
+    <h2>Container &amp; Services</h2>
+    <div class="stat-row"><span class="stat-label">Docker Container</span><span class="stat-value">15 aktiv</span></div>
+    <div class="stat-row"><span class="stat-label">Systemd Services</span><span class="stat-value">3 aktiv + 1 disabled</span></div>
+    <div class="stat-row"><span class="stat-label">Orchestrator</span><span class="stat-value">v3.0.0 (4 Workers)</span></div>
+    <div class="stat-row"><span class="stat-label">Dify</span><span class="stat-value">4 Workers (extern)</span></div>
+    <div class="stat-row"><span class="stat-label">Ollama</span><span class="stat-value">4 parallel, 2 models</span></div>
+  </div>
+  <div class="card">
+    <h2>Performance</h2>
+    <div class="stat-row"><span class="stat-label">Embedding (1 req)</span><span class="stat-value">~0.5s</span></div>
+    <div class="stat-row"><span class="stat-label">Embedding (4 parallel)</span><span class="stat-value">~1.6s</span></div>
+    <div class="stat-row"><span class="stat-label">Agent Call (Worker)</span><span class="stat-value">~75s</span></div>
+    <div class="stat-row"><span class="stat-label">Doctor Health Check</span><span class="stat-value">~0.06s</span></div>
+    <div class="stat-row"><span class="stat-label">Mem0 Save</span><span class="stat-value">~30s</span></div>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION 11: BEKANNTE LIMITS ═══════════ -->
+<div class="section-title">⚠️ 11. Bekannte Limits &amp; Status</div>
+
+<div class="card">
+  <table>
+    <tr><th>Thema</th><th>Status</th><th>Detail</th><th>Nächster Schritt</th></tr>
+    <tr style="background:var(--green-bg)"><td>Orchestrator Workers</td><td><span class="badge badge-ok">GELÖST</span></td><td>4 Uvicorn Workers aktiv</td><td>—</td></tr>
+    <tr style="background:var(--green-bg)"><td>Dify Workers</td><td><span class="badge badge-ok">GELÖST</span></td><td>SERVER_WORKER_AMOUNT=4</td><td>—</td></tr>
+    <tr style="background:var(--green-bg)"><td>Ollama Parallel</td><td><span class="badge badge-ok">GELÖST</span></td><td>NUM_PARALLEL=4, 3x Speedup</td><td>—</td></tr>
+    <tr style="background:var(--green-bg)"><td>Agent-Memories</td><td><span class="badge badge-ok">GELÖST</span></td><td>Dual-Write aktiv, 42 Memories gesamt</td><td>—</td></tr>
+    <tr style="background:var(--green-bg)"><td>Neo4j Password</td><td><span class="badge badge-ok">GELÖST</span></td><td>Korrektes Passwort in Mem0</td><td>—</td></tr>
+    <tr style="background:var(--green-bg)"><td>Dossier Reliability</td><td><span class="badge badge-ok">GELÖST</span></td><td>JSON-Fallback + Merge</td><td>—</td></tr>
+    <tr><td>Mem0 Graph-Extraktion</td><td><span class="badge badge-warn">OFFEN</span></td><td>glm-4.7 kann Entity-JSON nicht produzieren → 0 Graph-Nodes</td><td>Anderes LLM oder custom_prompt</td></tr>
+    <tr><td>Core Memory</td><td><span class="badge badge-warn">OFFEN</span></td><td>Endpoints existieren, aber kein Agent liest /memory/system</td><td>HTTP-Node in Dify-Workflows</td></tr>
+    <tr><td>Agent Cross-Read</td><td><span class="badge badge-warn">OFFEN</span></td><td>Kein Shared Namespace zwischen Agenten</td><td>team-shared Namespace + Proxy</td></tr>
+    <tr><td>Self-Learning</td><td><span class="badge badge-err">DEFEKT</span></td><td>/feedback existiert, aber Dify ruft es nie auf</td><td>Callback-Node am Workflow-Ende</td></tr>
+  </table>
+</div>
+
+<div class="timestamp">
+  📋 Dokument erstellt: 16. März 2026, 04:00 UTC<br>
+  Alle Daten live vom Server 178.104.51.123 abgerufen und verifiziert.<br>
+  77 Qdrant-Vektoren · 44 Neo4j-Nodes · 42 Agent-Memories · 6 Doctor-Dossier-Entries · 6/6 Services healthy<br>
+  Nachweise: Mem0-API, Qdrant-API, Neo4j Cypher, Ollama Tags, Docker Status, Systemd Status, End-to-End Agent-Call
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Code Team — Optimierung &amp; Verbesserungen</title>
+<style>
+:root {
+  --bg: #0a0e17; --surface: #111827; --card: #1a2332;
+  --border: #2d3748; --text: #e2e8f0; --muted: #94a3b8;
+  --green: #10b981; --red: #ef4444; --amber: #f59e0b;
+  --blue: #3b82f6; --purple: #8b5cf6; --cyan: #06b6d4;
+  --green-bg: rgba(16,185,129,0.1); --red-bg: rgba(239,68,68,0.1);
+  --amber-bg: rgba(245,158,11,0.1); --blue-bg: rgba(59,130,246,0.1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Inter','Segoe UI',sans-serif; line-height:1.6; padding:2rem; }
+.container { max-width:1400px; margin:0 auto; }
+h1 { font-size:2rem; margin-bottom:0.3rem; background:linear-gradient(135deg,var(--amber),var(--red)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.subtitle { color:var(--muted); margin-bottom:2rem; font-size:0.95rem; }
+.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.75rem; font-weight:600; }
+.badge-done { background:var(--green-bg); color:var(--green); border:1px solid var(--green); }
+.badge-open { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber); }
+.badge-crit { background:var(--red-bg); color:var(--red); border:1px solid var(--red); }
+.badge-info { background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue); }
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; }
+.card h2 { font-size:1.1rem; margin-bottom:1rem; }
+table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+th { text-align:left; padding:0.6rem; border-bottom:2px solid var(--border); color:var(--cyan); font-weight:600; }
+td { padding:0.6rem; border-bottom:1px solid var(--border); vertical-align:top; }
+tr:hover { background:rgba(59,130,246,0.05); }
+.section-title { font-size:1.4rem; margin:2.5rem 0 1rem; padding-bottom:0.5rem; border-bottom:2px solid var(--border); }
+code { background:var(--surface); padding:1px 5px; border-radius:3px; font-size:0.85em; }
+.priority-bar { display:flex; gap:1rem; margin-bottom:1.5rem; }
+.priority-item { flex:1; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center; }
+.priority-item .count { font-size:2rem; font-weight:700; font-family:'Fira Code',monospace; }
+.timestamp { text-align:right; color:var(--muted); font-size:0.8rem; margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Optimierung &amp; Verbesserungen — Roadmap</h1>
+<p class="subtitle">Stand: 16. März 2026 · Priorisiert nach Impact &amp; Aufwand</p>
+
+<!-- ═══════ PROGRESS ═══════ -->
+<div class="priority-bar">
+  <div class="priority-item"><div class="count" style="color:var(--green)">17</div><div style="color:var(--muted);font-size:0.85rem">Erledigt (heute)</div></div>
+  <div class="priority-item"><div class="count" style="color:var(--red)">0</div><div style="color:var(--muted);font-size:0.85rem">Kritisch offen</div></div>
+  <div class="priority-item"><div class="count" style="color:var(--amber)">4</div><div style="color:var(--muted);font-size:0.85rem">Wichtig offen</div></div>
+  <div class="priority-item"><div class="count" style="color:var(--blue)">4</div><div style="color:var(--muted);font-size:0.85rem">Nice-to-have</div></div>
+</div>
+
+<!-- ═══════ ERLEDIGTE FIXES ═══════ -->
+<div class="section-title">✅ 1. Erledigt am 16. März 2026</div>
+
+<div class="card">
+  <table>
+    <tr><th>#</th><th>Fix</th><th>Problem</th><th>Lösung</th><th>Datei</th></tr>
+    <tr>
+      <td>F1</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Telegram Bot falsches Token</td>
+      <td>Token in .service korrigiert → Bot pollt HTTP 200</td>
+      <td><code>aai-coach-telegram.service</code></td>
+    </tr>
+    <tr>
+      <td>F2</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>/feedback zeigt auf Cloud-Mem0 API statt lokal</td>
+      <td>URL auf <code>localhost:8002</code> geändert + ENV-Check disabled</td>
+      <td><code>main.py</code> Z.420, 455, 398</td>
+    </tr>
+    <tr>
+      <td>F3</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Plugin Service Endlos-Handshake-Loop</td>
+      <td><code>systemctl stop && disable</code></td>
+      <td><code>cloud-code-plugin.service</code></td>
+    </tr>
+    <tr>
+      <td>F4</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Mem0 Single-Worker blockiert bei Embedding</td>
+      <td>server.py mit <code>workers=2</code> rebuilt</td>
+      <td><code>mem0-server/server.py</code></td>
+    </tr>
+    <tr>
+      <td>F5</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Agent-Parameter nicht durch Monkey-Patch gereicht</td>
+      <td><code>agent=req.agent</code> + Signatur erweitert</td>
+      <td><code>main.py</code> Z.~175</td>
+    </tr>
+    <tr>
+      <td>F6</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Dify false "DOWN" (307 redirect)</td>
+      <td>Health-Path auf <code>/console/api/setup</code> + 307 akzeptiert</td>
+      <td><code>doctor_agent.py</code></td>
+    </tr>
+    <tr>
+      <td>F7</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Qdrant-Dify false "DOWN" (nur Docker-intern)</td>
+      <td>Aus Doctor Health-Checks entfernt</td>
+      <td><code>doctor_agent.py</code></td>
+    </tr>
+    <tr>
+      <td>F8</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Dossier-Einträge von Mem0 verworfen</td>
+      <td>Format auf konversationelles Deutsch + "Merke dir:" Prefix</td>
+      <td><code>doctor_agent.py</code> Z.804+</td>
+    </tr>
+    <tr>
+      <td>N1</td><td><span class="badge badge-done">NEU</span></td>
+      <td>—</td>
+      <td>Doctor Agent erstellt (29 Funktionen, 12 Endpoints)</td>
+      <td><code>workflows/doctor_agent.py</code></td>
+    </tr>
+    <tr>
+      <td>N2</td><td><span class="badge badge-done">NEU</span></td>
+      <td>—</td>
+      <td>Self-Healing Wrapper (Monkey-Patch Chain)</td>
+      <td><code>main.py</code> Z.745+</td>
+    </tr>
+    <tr>
+      <td>N3</td><td><span class="badge badge-done">NEU</span></td>
+      <td>—</td>
+      <td>Krankendossier-System (Mem0 pro Agent + zentral)</td>
+      <td><code>doctor_agent.py</code> Z.804+</td>
+    </tr>
+    <tr>
+      <td>F9</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Orchestrator Single-Worker (P1)</td>
+      <td><code>--workers 4</code> in systemd Service hinzugefügt → 4x Durchsatz</td>
+      <td><code>orchestrator.service</code></td>
+    </tr>
+    <tr>
+      <td>F10</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Dify Single-Worker (P2)</td>
+      <td><code>SERVER_WORKER_AMOUNT=4</code> in Docker .env</td>
+      <td><code>/opt/dify/docker/.env</code></td>
+    </tr>
+    <tr>
+      <td>F11</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Neo4j Passwort falsch in Mem0 (Graph nie erreichbar)</td>
+      <td>Passwort auf <code>22e58741703f24f1913550c9a8a51c99</code> korrigiert, Docker rebuilt</td>
+      <td><code>mem0-server/server.py</code></td>
+    </tr>
+    <tr>
+      <td>F12</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>save_user_memory() nur lokales JSON, nie Mem0</td>
+      <td>Dual-Write: Mem0 POST + JSON-Fallback implementiert</td>
+      <td><code>rag_middleware.py</code></td>
+    </tr>
+    <tr>
+      <td>F13</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Dossier-Einträge gehen bei Mem0-Rejection verloren</td>
+      <td>JSON-Fallback in <code>/opt/cloud-code/data/dossiers/</code> + Merge in get_dossier()</td>
+      <td><code>doctor_agent.py</code></td>
+    </tr>
+    <tr>
+      <td>F14</td><td><span class="badge badge-done">FIXED</span></td>
+      <td>Ollama Single-Queue (P3) — serielle LLM-Verarbeitung</td>
+      <td><code>OLLAMA_NUM_PARALLEL=4</code> + <code>OLLAMA_MAX_LOADED_MODELS=2</code> → 3x Speedup verifiziert</td>
+      <td><code>ollama.service</code></td>
+    </tr>
+  </table>
+</div>
+
+<!-- ═══════ KRITISCH ═══════ -->
+<div class="section-title">🔴 2. Kritisch — Performance-Blocker <span class="badge badge-done">ALLE GELÖST</span></div>
+
+<div class="card">
+  <table>
+    <tr><th>ID</th><th>Problem</th><th>Status</th><th>Lösung</th><th>Beweis</th></tr>
+    <tr>
+      <td><span class="badge badge-done">P1</span></td>
+      <td><strong>Orchestrator Single-Worker</strong><br>Uvicorn lief mit 1 Worker → alle Requests seriell</td>
+      <td><span class="badge badge-done">FIXED</span></td>
+      <td><code>--workers 4</code> in <code>orchestrator.service</code></td>
+      <td>systemctl restart erfolgreich, 4 Worker aktiv</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-done">P2</span></td>
+      <td><strong>Dify Single-Worker</strong><br><code>SERVER_WORKER_AMOUNT=1</code></td>
+      <td><span class="badge badge-done">FIXED</span></td>
+      <td><code>SERVER_WORKER_AMOUNT=4</code> in Docker .env</td>
+      <td>Dify api/worker Container neugestartet</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-done">P3</span></td>
+      <td><strong>Ollama Single-Queue</strong><br>Nur 1 LLM-Request gleichzeitig</td>
+      <td><span class="badge badge-done">FIXED</span></td>
+      <td><code>OLLAMA_NUM_PARALLEL=4</code> + <code>OLLAMA_MAX_LOADED_MODELS=2</code></td>
+      <td>Benchmark: 4 parallele Requests → 3x Speedup (2.0s statt 5.9s seriell)</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ═══════ WICHTIG ═══════ -->
+<div class="section-title">🟡 3. Wichtig — Funktionale Lücken</div>
+
+<div class="card">
+  <table>
+    <tr><th>ID</th><th>Problem</th><th>Impact</th><th>Fix</th><th>Aufwand</th></tr>
+    <tr>
+      <td><span class="badge badge-open">W1</span></td>
+      <td><strong>Core Memory nicht verdrahtet</strong><br>System-Memory existiert in main.py Endpoints, aber kein Agent liest es</td>
+      <td>Zentrale Fakten (Projektname, Stack, Regeln) werden nicht an Agenten weitergegeben</td>
+      <td>In Dify-Workflows: HTTP-Node hinzufügen der <code>/memory/system</code> abfragt und als System-Prompt injiziert</td>
+      <td>30 min pro Agent</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-open">W2</span></td>
+      <td><strong>Agent Cross-Read</strong><br>Agenten können nicht gegenseitig Mem0 lesen</td>
+      <td>Kein Wissenstransfer zwischen Agenten (Architect weiß nicht was Coder gelernt hat)</td>
+      <td>Shared Namespace <code>team-shared</code> in Mem0 + Dify-Workflows erweitern</td>
+      <td>1-2h</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-open">W3</span></td>
+      <td><strong>API Keys in Code</strong><br>DIFY_APP_KEY und andere Keys teils hardcoded</td>
+      <td>Sicherheitsrisiko, schwer zu rotieren</td>
+      <td>Alle Keys in <code>.env</code> externalisieren, <code>python-dotenv</code> nutzen</td>
+      <td>1h</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-open">W4</span></td>
+      <td><strong>Mem0 Graph-Extraktion scheitert</strong><br>Neo4j erreichbar (44 HippoRAG-Nodes), aber Mem0 erzeugt 0 Graph-Entities. Ursache: glm-4.7 erkennt Entities im Text, kann aber nicht das strukturierte JSON-Format produzieren das Mem0 erwartet (<code>Entity type map: {}</code>)</td>
+      <td>Graph-basierte Memory-Suche in Mem0 funktioniert nicht (HippoRAG Graph funktioniert)</td>
+      <td>Anderes LLM für Entity-Extraction (z.B. Qwen2.5-7B oder custom_prompt für glm-4.7)</td>
+      <td>2-3h</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-open">W5</span></td>
+      <td><strong>OpenRouter Bug (T02)</strong><br>Fallback zu OpenRouter funktioniert nicht</td>
+      <td>Kein LLM-Fallback bei Ollama-Ausfall</td>
+      <td>OpenRouter Integration in Dify prüfen und fixen</td>
+      <td>1h</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ═══════ NICE TO HAVE ═══════ -->
+<div class="section-title">🔵 4. Nice-to-have — Verbesserungen</div>
+
+<div class="card">
+  <table>
+    <tr><th>ID</th><th>Verbesserung</th><th>Nutzen</th><th>Aufwand</th></tr>
+    <tr>
+      <td><span class="badge badge-info">N1</span></td>
+      <td><strong>Prometheus + Grafana Monitoring</strong><br>Metriken für Response-Times, Error-Rates, Memory-Usage</td>
+      <td>Proaktives Monitoring statt reaktives Debugging</td>
+      <td>2-3h</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-info">N2</span></td>
+      <td><strong>Agent-Feedback-Loop</strong><br>Agenten bewerten eigene Antwort-Qualität und lernen aus Feedback</td>
+      <td>Continuous Improvement der Agent-Antworten</td>
+      <td>4-6h</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-info">N3</span></td>
+      <td><strong>Dossier-Dashboard</strong><br>Web-UI für Doctor Dossiers (Zeitverlauf, Trends, Alerts)</td>
+      <td>Visuelle Überwachung der Agent-Gesundheit</td>
+      <td>3-4h</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-info">N4</span></td>
+      <td><strong>Auto-Scaling Worker</strong><br>Dynamisch Worker-Anzahl anpassen basierend auf Last</td>
+      <td>Bessere Ressourcen-Nutzung bei schwankender Last</td>
+      <td>4-6h</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ═══════ EMPFOHLENE REIHENFOLGE ═══════ -->
+<div class="section-title">📋 5. Empfohlene Umsetzungsreihenfolge</div>
+
+<div class="card">
+  <table>
+    <tr><th>Schritt</th><th>Task</th><th>Aufwand</th><th>Impact</th></tr>
+    <tr style="background:var(--green-bg)">
+      <td>✅</td><td><s>P1: Orchestrator auf 4 Workers</s></td><td>—</td><td>Erledigt</td>
+    </tr>
+    <tr style="background:var(--green-bg)">
+      <td>✅</td><td><s>P2: Dify auf 4 Workers</s></td><td>—</td><td>Erledigt</td>
+    </tr>
+    <tr style="background:var(--green-bg)">
+      <td>✅</td><td><s>P3: Ollama Parallelisierung</s></td><td>—</td><td>Erledigt — 3x Speedup</td>
+    </tr>
+    <tr style="background:var(--amber-bg)">
+      <td><strong>1</strong></td><td>W3: API Keys externalisieren</td><td>1h</td><td>Security Baseline</td>
+    </tr>
+    <tr style="background:var(--amber-bg)">
+      <td><strong>2</strong></td><td>W1: Core Memory in Dify verdrahten</td><td>30 min/Agent</td><td>Agenten bekommen Projekt-Kontext</td>
+    </tr>
+    <tr style="background:var(--amber-bg)">
+      <td><strong>3</strong></td><td>W2: Agent Cross-Read (Shared Namespace)</td><td>1-2h</td><td>Wissenstransfer zwischen Agenten</td>
+    </tr>
+    <tr>
+      <td><strong>4</strong></td><td>W4: Mem0 Graph-Extraktion tunen (glm-4.7 → besseres LLM)</td><td>2-3h</td><td>Graph-basierte Memory-Suche</td>
+    </tr>
+    <tr>
+      <td><strong>5</strong></td><td>N1: Prometheus + Grafana</td><td>2-3h</td><td>Professionelles Monitoring</td>
+    </tr>
+  </table>
+</div>
+
+<div class="timestamp">
+  Aktualisiert: 16. März 2026, 03:50 UTC · Alle 3 kritischen Blocker gelöst · 17 Fixes total · Finale Verifikation bestanden
+</div>
+
+</div>
+</body>
+</html>
