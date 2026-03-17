@@ -88,7 +88,8 @@ Stand: 17.03.2026 (Session 6)
 ### T24: Mem0 get_all() Bug richtig fixen (qdrant-client Slice-Bug)
 ### T25: Telegram Gruppe als Alert-Ziel evaluieren
 ### T26: config.yaml Inkonsistenzen bereinigen
-### T27: qwen3-embedding:0.6b noch auf Server (sollte geloescht sein, 639MB) (NEU)
+### ~~T27~~: qwen3-embedding:0.6b — ERLEDIGT (Session 7)
+- **Status:** ✅ DONE — `ollama rm qwen3-embedding:0.6b` (639MB frei)
 
 ---
 
@@ -128,6 +129,19 @@ Stand: 17.03.2026 (Session 6)
 ---
 
 ## ERLEDIGT
+
+
+### Session 7 (17.03.2026)
+- [x] T-SYS03: Intent Classifier in enrich_for_agent() verdrahtet (classify_intent → triviale Queries skippen RAG)
+- [x] T-SYS05: 29 neue Memories geseedet (alle 11 Agents + shared + denis)
+- [x] T-SYS06: HippoRAG Term-Split Query — 0 Hits Bug behoben
+- [x] T-SYS07: 4 gunicorn+UvicornWorker (statt 1 uvicorn Worker)
+- [x] T27: qwen3-embedding:0.6b geloescht (639MB frei)
+- [x] HybridRetriever: qwen3-embedding (4096d) → bge-m3:latest (1024d) Dimension-Fix
+- [x] Intent Classifier: minimax-m2.5:cloud → llama3.2:3b (lokal, zuverlaeassig), num_predict 80→120
+- [x] Doctor Agent False-Positive Fix: timeout 5s→20s, mem0_get_blocked auto_heal=False
+- [x] LLM Model Fix: Mem0 minimax-m2.5:cloud → llama3.2:3b
+- [x] Systemd Services: cct-orchestrator, cct-hipporag, cct-network-fix (persistent)
 
 ### Session 6 (17.03.2026)
 - [x] 5 HTML-Architektur-Dokumente erstellt (RAG-Architektur, Komponentenregister, Agent-Memory-Matrix, Memory-Architektur, Memory-Konstrukt Letta-Style)
@@ -185,7 +199,7 @@ Stand: 17.03.2026 (Session 6)
 | P0 | 0 | 2 | Notfall behoben (Mem0 re-geseedet, HippoRAG Term-Split Fix) |
 | P1 | 1 | 6 | T-SYS04 (Answer-Node Dify Bug, Workaround aktiv) |
 | P2 | 6 | 1 | Vor naechstem Release |
-| P3 | 10 | 0 | Haertung |
+| P3 | 9 | 1 | T27 erledigt (qwen3-embedding:0.6b geloescht) |
 | PRIO 1 Memory | 3.5 | 0.5 | Memory Upgrade U1-U4 |
 | Phase 9 | 5 | 0 | Neue Features |
 | Erledigt | - | 55+ | Sessions 1-6 |
