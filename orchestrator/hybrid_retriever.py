@@ -155,13 +155,13 @@ async def _search_qdrant_direct(query: str, top_k: int = VECTOR_TOP_K) -> List[D
         # Embed query
         query_vector = _embed_model.get_text_embedding(query)
 
-        # Search — collection uses 4096-dim (qwen3-embedding), but our fastembed is 384-dim.
+        # Search — collection uses 1024-dim (bge-m3:latest). Use Ollama bge-m3 for embedding.
         # Use Ollama for embedding to match the collection's dimensionality.
         import httpx as hx
         async with hx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
                 "http://localhost:11434/api/embeddings",
-                json={"model": "qwen3-embedding", "prompt": query},
+                json={"model": "bge-m3:latest", "prompt": query},
             )
             if resp.status_code == 200:
                 query_vector = resp.json().get("embedding", [])

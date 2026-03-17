@@ -526,7 +526,7 @@ async def health_check() -> dict:
 
 import re as _re
 
-INTENT_CLASSIFIER_MODEL = "minimax-m2.5:cloud"
+INTENT_CLASSIFIER_MODEL = "llama3.2:3b"  # local, reliable, no cloud dependency
 INTENT_CLASSIFIER_TIMEOUT = 8  # max 8s, danach fallback auf "alles abfragen"
 OLLAMA_URL = os.getenv("OLLAMA_CLOUD_URL", "http://localhost:11434")
 
@@ -575,11 +575,12 @@ async def classify_intent(query: str) -> dict:
     lower = query.strip().lower()
     
     # Very short messages (< 15 chars) are almost always greetings/smalltalk
-    if len(lower) < 15:
+    if len(lower) < 20:
         greetings = ["hallo", "hi", "hey", "moin", "servus", "selam", "yo", "na",
                      "guten morgen", "guten tag", "guten abend", "good morning",
                      "hello", "danke", "thanks", "ok", "ja", "nein", "no", "yes",
-                     "gut", "passt", "alles klar", "klar", "verstanden", "cool"]
+                     "gut", "passt", "alles klar", "klar", "verstanden", "cool",
+                     "sag ", "antworte", "super", "prima", "wie gehts", "wie geht"]
         for g in greetings:
             if lower.startswith(g) or lower == g:
                 logger.info(f"Intent [FAST]: greeting detected -> all false")
@@ -610,7 +611,7 @@ async def classify_intent(query: str) -> dict:
                     "model": INTENT_CLASSIFIER_MODEL,
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"temperature": 0.1, "num_predict": 80}
+                    "options": {"temperature": 0.1, "num_predict": 120}
                 }
             )
             if resp.status_code == 200:
