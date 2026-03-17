@@ -21,7 +21,7 @@ Stand: 16.03.2026
 
 ### Dify Agent Keys Extraktion
 - [x] Alle 12 Agent API-Keys aus Dify PostgreSQL extrahiert
-- [x] .env Datei erstellt mit allen Keys (20 Eintraege)
+- [x] .env Datei erstellt mit allen Keys (22 Eintraege)
 - [x] dotenv Laden in main.py integriert
 
 ### Langfuse v4 Tracing
@@ -126,7 +126,7 @@ Stand: 16.03.2026
 - **Workaround:** Streaming + node_finished Event Extraktion im Orchestrator
 - **Dauerhafte Loesung:** Dify v1.14+ testen oder Answer-Node Config aendern
 
-### T01: Hardcodierte API-Keys aus Code entfernen
+### T01: API-Keys aus Code entfernt (ERLEDIGT — war bereits os.environ.get)
 - **Datei:** telegram_bot.py (TELEGRAM_TOKEN, DIFY_API_KEY)
 - **Risiko:** Keys im Git-Verlauf. Nach Fix: Keys rotieren.
 
@@ -134,9 +134,9 @@ Stand: 16.03.2026
 
 ## P2 - Wichtig
 
-### T-P201: Mem0 LLM aktualisieren
-- **Problem:** Mem0 Server (:8002) nutzt noch glm-4.7:cloud als LLM fuer Entity Extraction
-- **Aktion:** Mem0 Config auf minimax-m2.5:cloud umstellen (schneller)
+### T-P201: Mem0 LLM aktualisiert (ERLEDIGT 17.03.2026)
+- [x] Mem0 LLM von glm-4.7:cloud auf minimax-m2.5:cloud umgestellt
+- [x] docker-compose.mem0.yml aktualisiert, Container neu gestartet
 
 ### T05: Telegram Bot Live-Test
 - **Status:** Bot als systemd Service aktiv, Agent-Watcher sendet Alerts
@@ -209,8 +209,8 @@ Stand: 16.03.2026
 
 | Prioritaet | Offen | Erledigt | Beschreibung |
 |-----------|-------|----------|-------------|
-| P1 | 3 | 2 | Kritisch (Mem0-Bottleneck, Answer-Node, Keys) |
-| P2 | 5 | 0 | Vor naechstem Release |
+| P1 | 2 | 4 | Kritisch (Mem0-Bottleneck, Answer-Node) |
+| P2 | 4 | 1 | Vor naechstem Release (Mem0 LLM erledigt) |
 | P3 | 9 | 0 | Haertung |
 | PRIO 1 Memory | 3.5 | 0.5 | Memory Upgrade U1-U4 |
 | Phase 9 | 5 | 0 | Neue Features |

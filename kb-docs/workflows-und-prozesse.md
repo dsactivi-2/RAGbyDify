@@ -130,7 +130,7 @@ Bei Ollama Cloud Ausfall wird automatisch auf OpenRouter umgeschaltet:
 - deepseek-v3.2 → deepseek/deepseek-chat
 - minimax-m2.5 → deepseek/deepseek-chat
 - glm-4.7 → deepseek/deepseek-chat
-**Status:** Infrastruktur gebaut, OPENROUTER_API_KEY noch leer.
+**Status:** AKTIV — API-Key gesetzt am 17.03.2026.
 
 ## systemd Services (Reboot-sicher)
 Alle kritischen Dienste laufen als systemd Services:
@@ -149,7 +149,7 @@ Alle kritischen Dienste laufen als systemd Services:
 1. **Dify Answer-Node Bug:** Template {{#llm-main.text#}} wird nicht aufgeloest. Workaround: Streaming-Modus.
 2. **Mem0 Bottleneck:** Memory-Operationen (abrufen + speichern) dauern ~45s pro Call. LLM ist schnell, Mem0 ist langsam.
 3. **OpenRouter Fallback:** API-Key noch leer, Fallback daher nicht funktionsfaehig.
-4. **Mem0 LLM:** Nutzt noch glm-4.7:cloud statt minimax-m2.5:cloud fuer Entity Extraction.
+4. **Mem0 LLM:** GEFIXT — jetzt minimax-m2.5:cloud (umgestellt 17.03.2026).
 
 ## Backup Workflow
 - Taeglich um 03:00 via Cron
