@@ -181,7 +181,7 @@ async def check_service(svc: ServiceHealth) -> bool:
     """Einzelnen Service prüfen"""
     try:
         start = time.time()
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.get(f"{svc.url}{svc.health_path}")
             elapsed = time.time() - start
             svc.response_time = elapsed
@@ -280,7 +280,7 @@ async def full_diagnose() -> Dict:
     # Mem0 GET hängt? (bekanntes Problem)
     if state.services["mem0"].is_healthy:
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with httpx.AsyncClient(timeout=20.0) as client:
                 resp = await client.get(f"{MEM0_URL}/v1/memories/?user_id=doctor-test")
                 if resp.status_code != 200:
                     results["problems"].append({
@@ -308,8 +308,8 @@ async def full_diagnose() -> Dict:
         elif problem["type"] == "mem0_get_blocked":
             results["recommendations"].append({
                 "action": "restart_mem0",
-                "reason": "Mem0 GET blockiert, POST funktioniert noch — klassischer Memory-Leak",
-                "auto_heal": True,
+                "reason": "Mem0 GET blockiert — kein Auto-Restart (kann durch langsame LLM-Ops kommen)",
+                "auto_heal": False,  # Deaktiviert: llama3.2:3b benoetigt 30s, timeout war False-Positive
             })
         elif problem["type"] == "service_down" and problem["target"] == "hipporag":
             results["recommendations"].append({
@@ -395,7 +395,7 @@ async def heal_agent(agent_name: str) -> bool:
 
     # Versuch 1: Mem0 Cache für Agent leeren (falls Mem0 das Problem ist)
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             # Ping Mem0 für diesen Agent
             resp = await client.post(
                 f"{MEM0_URL}/v1/memories/search/",

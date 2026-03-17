@@ -40,15 +40,15 @@ services:
 
       # LLM für Memory-Extraktion (Ollama — bereits im Stack)
       LLM_PROVIDER: "ollama"
-      LLM_MODEL: "minimax-m2.5:cloud"
+      LLM_MODEL: "llama3.2:3b"
       LLM_BASE_URL: "http://172.19.0.1:11434"
       LLM_TEMPERATURE: "0.1"
 
       # Embeddings (Ollama)
       EMBEDDER_PROVIDER: "ollama"
-      EMBEDDER_MODEL: "qwen3-embedding:latest"
+      EMBEDDER_MODEL: "bge-m3:latest"
       EMBEDDER_BASE_URL: "http://172.19.0.1:11434"
-      EMBEDDER_EMBEDDING_DIMS: "4096"
+      EMBEDDER_EMBEDDING_DIMS: "1024"
 
       # Memory Config
       MEM0_MEMORY_THRESHOLD: "0.7"

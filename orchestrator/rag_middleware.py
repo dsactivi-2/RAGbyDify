@@ -370,10 +370,25 @@ async def enrich_for_agent(
     all available context (KB, HippoRAG, User Memory, Core Memory, Anti-Hallucination).
 
     This is the ONE function every client/agent should call.
+    Uses classify_intent to skip unnecessary RAG sources (T-SYS03 optimization).
     """
+    # ──────── Intent Classification (T-SYS03 Fix) ────────
+    # Determines which RAG sources are actually needed — skips all for trivial queries
+    intent = await classify_intent(query)
+    needs_rag = any([intent["kb"], intent["hipporag"], intent["mem0"], intent["core"]])
+
+    if not needs_rag:
+        logger.info(
+            f"Intent [SKIP]: trivial query, no RAG needed "
+            f"(classifier={intent.get('classifier')}, agent={agent or 'unknown'})"
+        )
+        if not include_anti_hallucination:
+            return query
+        return query + "\n\n" + ANTI_HALLUCINATION_HEADER
+
     # ──────── Hybrid Retriever (primary) ────────
     hybrid_context = ""
-    if USE_HYBRID_RETRIEVER:
+    if USE_HYBRID_RETRIEVER and (intent["kb"] or intent["hipporag"]):
         hybrid_context = await _get_hybrid_context(query, agent)
 
     # ──────── Legacy fallback if hybrid is off or returned nothing ────────
@@ -381,16 +396,29 @@ async def enrich_for_agent(
     hippo_context = ""
     mem0_context = ""
     if not hybrid_context:
-        kb_task = asyncio.create_task(fetch_kb(query))
-        hippo_task = asyncio.create_task(fetch_hipporag(query))
-        kb_context = await kb_task
-        hippo_context = await hippo_task
-        mem0_task = asyncio.create_task(fetch_mem0_context(query, user_id, agent))
-        mem0_context = await mem0_task
+        tasks = []
+        if intent["kb"]:
+            kb_task = asyncio.create_task(fetch_kb(query))
+            tasks.append(("kb", kb_task))
+        if intent["hipporag"]:
+            hippo_task = asyncio.create_task(fetch_hipporag(query))
+            tasks.append(("hippo", hippo_task))
+        if intent["mem0"]:
+            mem0_task = asyncio.create_task(fetch_mem0_context(query, user_id, agent))
+            tasks.append(("mem0", mem0_task))
 
-    # Synchronous: Legacy User Memory + Core Memory (always loaded)
-    user_mem = get_user_memory_context(user_id)
-    core_mem = get_core_memory_context(agent)
+        for name, task in tasks:
+            result = await task
+            if name == "kb":
+                kb_context = result
+            elif name == "hippo":
+                hippo_context = result
+            elif name == "mem0":
+                mem0_context = result
+
+    # Synchronous: Legacy User Memory + Core Memory (only if intent.core)
+    user_mem = get_user_memory_context(user_id) if intent["core"] else ""
+    core_mem = get_core_memory_context(agent) if intent["core"] else ""
 
     # Build enriched query
     has_context = any([hybrid_context, kb_context, hippo_context, user_mem, core_mem, mem0_context])
@@ -425,6 +453,7 @@ async def enrich_for_agent(
     mode = "HYBRID" if hybrid_context else "LEGACY"
     logger.info(
         f"RAG enrichment [{mode}] for {agent or 'unknown'}: "
+        f"intent={intent.get('classifier')}, "
         f"HYBRID={bool(hybrid_context)}, KB={bool(kb_context)}, HIPPO={bool(hippo_context)}, "
         f"MEM0={bool(mem0_context)}, LEGACY_MEM={bool(user_mem)}, CORE={bool(core_mem)}"
     )
@@ -489,3 +518,187 @@ async def health_check() -> dict:
     status["user_memory_dir"] = MEMORY_DIR.exists()
 
     return status
+
+
+# ──────── Intent Classifier (T-SYS03 Fix) ────────
+# Gibt dem Orchestrator eine KI, die VORHER entscheidet welche Quellen noetig sind.
+# Spart 5-40s pro Request bei trivialen Anfragen.
+
+import re as _re
+
+INTENT_CLASSIFIER_MODEL = "minimax-m2.5:cloud"
+INTENT_CLASSIFIER_TIMEOUT = 8  # max 8s, danach fallback auf "alles abfragen"
+OLLAMA_URL = os.getenv("OLLAMA_CLOUD_URL", "http://localhost:11434")
+
+INTENT_PROMPT = """Du bist ein Query-Classifier. Analysiere die User-Frage und entscheide welche Wissensquellen gebraucht werden.
+
+Antworte NUR mit einem JSON-Objekt, NICHTS anderes. Kein Text, keine Erklaerung.
+
+Quellen:
+- kb: Projekt-Dokumentation (tech-stack, workflows, runbook, projektbeschreibung)
+- hipporag: Beziehungen zwischen Konzepten (welcher Agent nutzt welches Modell, wie haengen Komponenten zusammen)
+- mem0: Persoenliche Erinnerungen, Praeferenzen, Entscheidungen, was der User frueher gesagt hat
+- core: System-Variablen (Projektname, Sprache, Version, Konfiguration)
+
+Regeln:
+- Gruesse, Smalltalk, einfache Ja/Nein → alles false
+- Fragen ueber das Projekt, Architektur, Code → kb=true, hipporag=true
+- Fragen ueber Praeferenzen, Entscheidungen, "was habe ich gesagt" → mem0=true
+- Fragen ueber Beziehungen ("wer nutzt was", "wie haengt X mit Y zusammen") → hipporag=true
+- Fragen ueber Konfiguration, Einstellungen → core=true
+- Im Zweifel lieber true als false (besser zu viel Kontext als zu wenig)
+
+User-Frage: {query}
+
+JSON:"""
+
+# Cache: gleiche Frage-Typen nicht doppelt klassifizieren
+_intent_cache = {}
+_CACHE_MAX = 200
+
+
+def _normalize_for_cache(query: str) -> str:
+    """Normalize query for cache lookup (lowercase, strip, first 100 chars)."""
+    return query.strip().lower()[:100]
+
+
+async def classify_intent(query: str) -> dict:
+    """
+    Classify user query to determine which RAG sources are needed.
+    Returns: {"kb": bool, "hipporag": bool, "mem0": bool, "core": bool, "classifier": "llm"|"fast"|"fallback"}
+    
+    Fast-path: trivial queries (greetings, short messages) skip LLM entirely.
+    LLM-path: minimax-m2.5 classifies in ~200-500ms.
+    Fallback: if LLM fails or times out, return all=True (safe default).
+    """
+    # ── Fast-path: Greeting / Trivial Detection (0ms) ──
+    lower = query.strip().lower()
+    
+    # Very short messages (< 15 chars) are almost always greetings/smalltalk
+    if len(lower) < 15:
+        greetings = ["hallo", "hi", "hey", "moin", "servus", "selam", "yo", "na",
+                     "guten morgen", "guten tag", "guten abend", "good morning",
+                     "hello", "danke", "thanks", "ok", "ja", "nein", "no", "yes",
+                     "gut", "passt", "alles klar", "klar", "verstanden", "cool"]
+        for g in greetings:
+            if lower.startswith(g) or lower == g:
+                logger.info(f"Intent [FAST]: greeting detected -> all false")
+                return {"kb": False, "hipporag": False, "mem0": False, "core": False, "classifier": "fast"}
+    
+    # ── Cache check ──
+    cache_key = _normalize_for_cache(query)
+    if cache_key in _intent_cache:
+        cached = _intent_cache[cache_key]
+        logger.info(f"Intent [CACHE]: {cached}")
+        return {**cached, "classifier": "cache"}
+    
+    # ── Keyword-based fast classification (0ms, catches obvious cases) ──
+    fast_result = _fast_classify(lower)
+    if fast_result:
+        logger.info(f"Intent [KEYWORD]: {fast_result}")
+        _cache_intent(cache_key, fast_result)
+        return {**fast_result, "classifier": "keyword"}
+    
+    # ── LLM Classification (~200-500ms) ──
+    try:
+        prompt = INTENT_PROMPT.replace("{query}", query[:500])
+        
+        async with httpx.AsyncClient(timeout=float(INTENT_CLASSIFIER_TIMEOUT)) as client:
+            resp = await client.post(
+                f"{OLLAMA_URL}/api/generate",
+                json={
+                    "model": INTENT_CLASSIFIER_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 80}
+                }
+            )
+            if resp.status_code == 200:
+                raw = resp.json().get("response", "").strip()
+                parsed = _parse_intent_json(raw)
+                if parsed:
+                    logger.info(f"Intent [LLM]: {parsed} (raw: {raw[:80]})")
+                    _cache_intent(cache_key, parsed)
+                    return {**parsed, "classifier": "llm"}
+                else:
+                    logger.warning(f"Intent [LLM]: parse failed: {raw[:120]}")
+    except Exception as e:
+        logger.warning(f"Intent [LLM]: timeout/error ({e})")
+    
+    # ── Fallback: alles abfragen (sicher) ──
+    logger.info(f"Intent [FALLBACK]: all true")
+    return {"kb": True, "hipporag": True, "mem0": True, "core": True, "classifier": "fallback"}
+
+
+def _fast_classify(lower: str) -> Optional[dict]:
+    """Keyword-based fast classification. Returns None if unsure."""
+    # Memory/Preference questions
+    mem_kw = ["erinnerst", "merke", "merk dir", "was habe ich", "was hab ich",
+              "praeferenz", "preference", "entscheidung", "decision", "letzte session",
+              "was wollte ich", "was war", "frueher", "gesagt", "remember"]
+    if any(kw in lower for kw in mem_kw):
+        return {"kb": False, "hipporag": False, "mem0": True, "core": False}
+    
+    # Relationship questions -> HippoRAG
+    rel_kw = ["zusammenhang", "beziehung", "verbind", "nutzt", "verwendet",
+              "haengt zusammen", "abhaengig", "relationship", "connected"]
+    if any(kw in lower for kw in rel_kw):
+        return {"kb": True, "hipporag": True, "mem0": False, "core": False}
+    
+    # Project/Architecture questions -> KB + HippoRAG
+    arch_kw = ["architektur", "architecture", "orchestrator", "agent", "dify",
+               "mem0", "hipporag", "neo4j", "qdrant", "ollama", "port",
+               "docker", "service", "endpoint", "api", "stack", "workflow",
+               "deployment", "server", "config"]
+    if any(kw in lower for kw in arch_kw):
+        return {"kb": True, "hipporag": True, "mem0": False, "core": True}
+    
+    # Code questions -> KB
+    code_kw = ["code", "function", "funktion", "fehler", "error", "bug", "fix",
+               "implementier", "schreib", "erstell", "build", "deploy"]
+    if any(kw in lower for kw in code_kw):
+        return {"kb": True, "hipporag": False, "mem0": False, "core": False}
+    
+    # Config questions -> Core
+    config_kw = ["einstellung", "setting", "konfiguration", "variable", "env",
+                 "parameter", "version", "sprache", "language"]
+    if any(kw in lower for kw in config_kw):
+        return {"kb": False, "hipporag": False, "mem0": False, "core": True}
+    
+    return None  # unsure -> use LLM
+
+
+def _parse_intent_json(raw: str) -> Optional[dict]:
+    """Parse LLM response as JSON. Handles markdown code blocks and messy output."""
+    # Strip markdown code blocks
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = _re.sub(r'^```(?:json)?\s*', '', raw)
+        raw = _re.sub(r'\s*```$', '', raw)
+    
+    # Find JSON object
+    match = _re.search(r'\{[^}]+\}', raw)
+    if not match:
+        return None
+    
+    try:
+        data = json.loads(match.group())
+        result = {
+            "kb": bool(data.get("kb", True)),
+            "hipporag": bool(data.get("hipporag", True)),
+            "mem0": bool(data.get("mem0", True)),
+            "core": bool(data.get("core", True)),
+        }
+        return result
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _cache_intent(key: str, result: dict):
+    """Cache intent result with LRU eviction."""
+    global _intent_cache
+    if len(_intent_cache) >= _CACHE_MAX:
+        # Remove oldest entry
+        oldest = next(iter(_intent_cache))
+        del _intent_cache[oldest]
+    _intent_cache[key] = result
