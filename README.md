@@ -44,7 +44,7 @@ KI-Multi-Agent-System basierend auf Dify v1.13.0 (Self-Hosted) mit 12 spezialisi
 - **Server:** Hetzner CCX33 (8 vCPU, 32 GB RAM) — 178.104.51.123
 - **Domain:** difyv2.activi.io (Caddy v2 SSL + HSTS)
 - **Orchestrator:** FastAPI v3.0 (Port 8000, 1317 Zeilen main.py, systemd)
-- **LLM:** Ollama v0.17.7 Cloud (5 Cloud-Modelle + 3 lokale Embedding-Modelle)
+- **LLM:** Ollama v0.17.7 Cloud (5 Cloud-Modelle + 2 lokale Embedding-Modelle)
 - **Ollama API Key:** Konfiguriert in ollama.service Environment
 - **RAG Middleware:** KB + HippoRAG + Mem0 + Anti-Halluzination Enrichment
 - **Knowledge Graph:** Neo4j 5.26.22 + HippoRAG (Port 8001, systemd)

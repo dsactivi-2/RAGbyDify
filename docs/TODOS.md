@@ -108,10 +108,10 @@ Stand: 16.03.2026
 
 ## P1 - Kritisch
 
-### T-SYS02: OpenRouter API-Key setzen
-- **Problem:** OPENROUTER_API_KEY in .env ist leer
-- **Auswirkung:** Bei Ollama Cloud Ausfall kein Fallback moeglich
-- **Aktion:** Key bei openrouter.ai generieren, in .env eintragen
+### T-SYS02: OpenRouter API-Key setzen (ERLEDIGT 17.03.2026)
+- [x] OPENROUTER_API_KEY in .env gesetzt
+- [x] Orchestrator neu gestartet, openrouter_configured=True
+- [x] Fallback aktiv: qwen3-coder→qwen-2.5-coder-32b, deepseek/minimax→deepseek-chat
 
 ### T-SYS03: Mem0 Dify-Bottleneck optimieren
 - **Problem:** Mem0 Tool Calls im Dify Chatflow dauern ~45s (12-15s abrufen + 30s speichern)
@@ -209,7 +209,7 @@ Stand: 16.03.2026
 
 | Prioritaet | Offen | Erledigt | Beschreibung |
 |-----------|-------|----------|-------------|
-| P1 | 4 | 1 | Kritisch (OpenRouter, Mem0-Bottleneck, Answer-Node, Keys) |
+| P1 | 3 | 2 | Kritisch (Mem0-Bottleneck, Answer-Node, Keys) |
 | P2 | 5 | 0 | Vor naechstem Release |
 | P3 | 9 | 0 | Haertung |
 | PRIO 1 Memory | 3.5 | 0.5 | Memory Upgrade U1-U4 |
