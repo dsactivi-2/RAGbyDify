@@ -10,7 +10,7 @@ Stand: 17.03.2026 (Session 6)
 
 ---
 
-## P0 - NOTFALL
+## P0 - NOTFALL (Session 7: alle behoben ✅)
 
 ### T-SYS05: Mem0 Datenverlust — 0 von 81 Memories (NEU Session 6)
 - **Problem:** mem0_memories Qdrant Collection hat 0 Punkte. Vorher 81 Memories.
@@ -35,25 +35,21 @@ Stand: 17.03.2026 (Session 6)
 
 ## P1 - Kritisch
 
-### T-SYS03: Orchestrator RAG-Bottleneck — Alle Quellen werden immer abgefragt
-- **Problem:** enrich_for_agent() fragt ALLE 4 Quellen parallel ab, egal ob noetig
-- **Auswirkung:** ~35-45s pro Request, auch fuer einfache Gruesse
-- **Loesung beschlossen (Session 6):** Option D — Agentic RAG / Tool-Use Pattern
-  - LLM bekommt RAG-Quellen als Tools (search_kb, search_hipporag, search_mem0)
-  - LLM entscheidet selbst welche Tools er aufruft
-  - Anthropic-empfohlenes Pattern ("Building Effective Agents" Guide)
-- **Zwischenschritt bereits da:** classify_intent() Funktion in rag_middleware.py (Zeile ~600+), aber NICHT verdrahtet
-- **Aktion:** Entscheidung treffen: Intent Classifier (Option A, schnell) oder Agentic RAG (Option D, besser)
+### ~~T-SYS03~~: RAG-Bottleneck — ERLEDIGT (Session 7)
+- **Status:** ✅ DONE — Intent Classifier in enrich_for_agent() integriert
+- **Fix:** classify_intent() wird jetzt aufgerufen; triviale Anfragen (Greetings, Smalltalk) skippen ALLE RAG-Quellen (0ms)
+- **Commit:** 83859d5 (2026-03-17)
 
 ### T-SYS04: Dify Answer-Node Template-Bug
 - **Problem:** {{#llm-main.text#}} wird nicht aufgeloest
 - **Workaround:** Streaming + node_finished Event Extraktion im Orchestrator
 - **Dauerhafte Loesung:** Dify v1.14+ testen oder Answer-Node Config aendern
 
-### T-SYS07: Orchestrator laeuft mit 1 Worker statt 4 (NEU Session 6)
-- **Problem:** Nach Session 5 Restarts nur noch 1 uvicorn Worker aktiv
-- **Auswirkung:** Sequentielle Verarbeitung, keine Parallelitaet
-- **Aktion:** orchestrator.service pruefen, Workers auf 4 setzen, `systemctl restart orchestrator`
+### ~~T-SYS07~~: Orchestrator 1 Worker — ERLEDIGT (Session 7)
+- **Status:** ✅ DONE — 4 gunicorn + UvicornWorker
+- **Fix:** uvicorn --workers 1 → gunicorn -w 4 -k uvicorn.workers.UvicornWorker
+- **Timeout:** 120s (Dify), graceful-timeout 30s
+- **Commit:** eeb80c2 (2026-03-17)`systemctl restart orchestrator`
 
 ---
 
@@ -186,8 +182,8 @@ Stand: 17.03.2026 (Session 6)
 
 | Prioritaet | Offen | Erledigt | Beschreibung |
 |-----------|-------|----------|-------------|
-| P0 | 2 | 0 | Notfall (Mem0 Datenverlust, HippoRAG API Bug) |
-| P1 | 3 | 4 | Kritisch (RAG-Bottleneck, Answer-Node, 1 Worker) |
+| P0 | 0 | 2 | Notfall behoben (Mem0 re-geseedet, HippoRAG Term-Split Fix) |
+| P1 | 1 | 6 | T-SYS04 (Answer-Node Dify Bug, Workaround aktiv) |
 | P2 | 6 | 1 | Vor naechstem Release |
 | P3 | 10 | 0 | Haertung |
 | PRIO 1 Memory | 3.5 | 0.5 | Memory Upgrade U1-U4 |
