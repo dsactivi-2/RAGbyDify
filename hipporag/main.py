@@ -45,7 +45,6 @@ async def startup():
     try:
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
         driver.verify_connectivity()
-        # Create indexes
         with driver.session() as session:
             session.run("CREATE INDEX IF NOT EXISTS FOR (n:Entity) ON (n.name)")
             session.run("CREATE INDEX IF NOT EXISTS FOR (n:Entity) ON (n.type)")
@@ -83,7 +82,7 @@ async def add_knowledge(req: AddKnowledgeRequest):
             SET r.source = $source, r.updated_at = datetime()
             RETURN s.name, type(r), o.name
             """
-            result = session.run(query, subject=req.subject, obj=req.obj, 
+            result = session.run(query, subject=req.subject, obj=req.obj,
                                predicate=req.predicate, source=req.source)
             record = result.single()
             return {"status": "added", "triple": [record[0], record[1], record[2]]}
@@ -97,8 +96,20 @@ async def query_knowledge(req: QueryRequest):
     depth = min(req.hop_depth or HOP_DEPTH, 3)
     try:
         with driver.session() as session:
+            # Split query into terms (min 3 chars); search nodes matching ANY term
+            terms = [t.strip() for t in req.query.split() if len(t.strip()) >= 3]
+            if not terms:
+                terms = [req.query]
+
             find_q = "MATCH (start) WHERE toLower(start.name) CONTAINS toLower($term) RETURN start LIMIT $lim"
-            start_nodes = list(session.run(find_q, term=req.query, lim=req.limit))
+            seen_ids = set()
+            start_nodes = []
+            for term in terms:
+                for row in session.run(find_q, term=term, lim=req.limit):
+                    eid = row["start"].element_id
+                    if eid not in seen_ids:
+                        seen_ids.add(eid)
+                        start_nodes.append(row)
 
             if not start_nodes:
                 return {"results": [], "query": req.query, "hop_depth": depth}
@@ -125,6 +136,7 @@ async def query_knowledge(req: QueryRequest):
             return {"results": records, "query": req.query, "hop_depth": depth}
     except Exception as e:
         raise HTTPException(500, str(e))
+
 @app.post("/knowledge/bulk")
 async def bulk_add(triples: List[AddKnowledgeRequest]):
     results = []
@@ -134,7 +146,10 @@ async def bulk_add(triples: List[AddKnowledgeRequest]):
             results.append(r)
         except Exception as e:
             results.append({"status": "error", "error": str(e)})
-    return {"added": len([r for r in results if r.get("status") == "added"]), "errors": len([r for r in results if r.get("status") == "error"])}
+    return {
+        "added": len([r for r in results if r.get("status") == "added"]),
+        "errors": len([r for r in results if r.get("status") == "error"])
+    }
 
 if __name__ == "__main__":
     import uvicorn
