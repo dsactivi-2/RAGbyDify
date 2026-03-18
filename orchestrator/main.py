@@ -144,6 +144,7 @@ AGENT_ROLES = [
 #
 # Fallback: OpenRouter (wenn Ollama Cloud ausfaellt)
 OLLAMA_CLOUD_URL = os.getenv("OLLAMA_CLOUD_URL", "http://localhost:11434")
+OLLAMA_CLOUD_API_KEY = os.getenv("OLLAMA_CLOUD_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -234,21 +235,22 @@ async def _call_llm_direct(prompt: str, agent: str = "worker", system: str = "")
     # --- Attempt 1: Ollama Cloud ---
     try:
         payload = {
-            "model": f"{model}:cloud",
+            "model": model,  # Direct ollama.com call — no :cloud suffix needed
             "prompt": prompt,
             "system": system,
             "stream": False,
             "options": {"temperature": temperature}
         }
+        headers = {"Authorization": f"Bearer {OLLAMA_CLOUD_API_KEY}"} if OLLAMA_CLOUD_API_KEY else {}
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(f"{OLLAMA_CLOUD_URL}/api/generate", json=payload)
+            resp = await client.post(f"{OLLAMA_CLOUD_URL}/api/generate", json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
             answer = data.get("response", "") or data.get("thinking", "")
             if answer.strip():
-                logger.info(f"[LLM-DIRECT] Ollama OK | agent={agent} model={model}:cloud")
+                logger.info(f"[LLM-DIRECT] Ollama OK | agent={agent} model={model}")
                 # Langfuse trace (v4)
-                _lf_trace(f"llm-direct-{agent}", agent=agent, inp=prompt[:500], out=answer[:500], model=f"{model}:cloud", metadata={"agent": agent, "provider": "ollama-cloud", "eval_count": data.get("eval_count", 0)})
+                _lf_trace(f"llm-direct-{agent}", agent=agent, inp=prompt[:500], out=answer[:500], model=model, metadata={"agent": agent, "provider": "ollama-cloud", "eval_count": data.get("eval_count", 0)})
                 return answer.strip()
             logger.warning(f"[LLM-DIRECT] Ollama empty response for {agent}")
     except Exception as e:
