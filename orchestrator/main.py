@@ -1061,6 +1061,81 @@ async def _orchestrator_call_agent(agent: str, query: str, user: str) -> Dict:
         return {"answer": f"[ERROR] Agent {agent} nicht konfiguriert", "conversation_id": "", "message_id": "", "sources": None}
     return await _call_agent_streaming(api_key=api_key, query=query, user=user, agent=agent)
 
+
+# ── System-Prompts fuer direkten LLM-Aufruf (ohne Dify) ──────────────────────
+AGENT_SYSTEM_PROMPTS = {
+    "architect": (
+        "Du bist der ARCHITECT AGENT des Cloud Code Teams. "
+        "Spezialgebiete: System-Architektur, Design-Entscheidungen, Tech-Stack Bewertung, Skalierbarkeit. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "coder": (
+        "Du bist der CODER AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Code schreiben, Features implementieren, Refactoring, Clean Code, Best Practices. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "tester": (
+        "Du bist der TESTER AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Unit-Tests, Integration-Tests, E2E-Tests, QA, Bug-Analyse, Testabdeckung. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "reviewer": (
+        "Du bist der REVIEWER AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Code-Reviews, Qualitaetssicherung, Verbesserungsvorschlaege, Standards. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "devops": (
+        "Du bist der DEVOPS AGENT des Cloud Code Teams. "
+        "Spezialgebiete: CI/CD, Docker, Kubernetes, Monitoring, Deployment, Infrastruktur. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "docs": (
+        "Du bist der DOCS AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Technische Dokumentation, README, API-Docs, Tutorials, Diagramme. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "security": (
+        "Du bist der SECURITY AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Security-Audits, Vulnerability-Analyse, OWASP, CVE-Analyse. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "planner": (
+        "Du bist der PLANNER AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Projektplanung, Sprint-Management, Task-Breakdown, Priorisierung. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "debug": (
+        "Du bist der DEBUG AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Fehlersuche, Log-Analyse, Performance-Debugging, Root-Cause-Analysis. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "worker": (
+        "Du bist der WORKER AGENT des Cloud Code Teams. "
+        "Spezialgebiete: Allgemeine Aufgaben, Recherche, Daten sammeln, Zusammenfassungen. "
+        "Antworte IMMER auf Deutsch."
+    ),
+    "coach": (
+        "Du bist der A.AI Coach — persoenlicher Assistent des Cloud Code Teams. "
+        "Du bist mehrsprachig. Antworte in der Sprache des Users (EN/DE/BS)."
+    ),
+    "memory": (
+        "Du bist der MEMORY AGENT des Cloud Code Teams. "
+        "Nutze die bereitgestellten Erinnerungen um personalisierte Antworten zu geben. "
+        "Antworte auf Deutsch."
+    ),
+}
+
+async def _orchestrator_call_agent_direct(agent: str, query: str, user: str) -> Dict:
+    """Direkter LLM-Aufruf — bypasses Dify. Ollama Cloud + OpenRouter Fallback."""
+    system = AGENT_SYSTEM_PROMPTS.get(agent, AGENT_SYSTEM_PROMPTS["worker"])
+    try:
+        answer = await _call_llm_direct(query, agent, system)
+        logger.info(f"[DIRECT] agent={agent} user={user} chars={len(answer)}")
+        return {"answer": answer, "conversation_id": "", "message_id": "", "sources": None}
+    except Exception as e:
+        logger.error(f"[DIRECT] agent={agent} error: {e}")
+        return {"answer": f"[ERROR] {str(e)}", "conversation_id": "", "message_id": "", "sources": None}
+
 # Workflow-Module laden
 _workflow_dir = _os.path.join(_os.path.dirname(__file__), "workflows")
 if _os.path.isdir(_workflow_dir):
@@ -1073,7 +1148,7 @@ if _os.path.isdir(_workflow_dir):
                 _mod = importlib.import_module(f"workflows.{_mod_name}")
                 # Injiziere Agent-Caller
                 if hasattr(_mod, "set_agent_caller"):
-                    _mod.set_agent_caller(_orchestrator_call_agent)
+                    _mod.set_agent_caller(_orchestrator_call_agent_direct)
                 # Registriere Router
                 if hasattr(_mod, "router"):
                     app.include_router(_mod.router)
