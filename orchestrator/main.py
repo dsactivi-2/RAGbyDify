@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
+import asyncio
 import httpx
 import os
 import json
@@ -346,6 +347,9 @@ async def _call_agent_streaming(api_key: str, query: str, user: str,
                         # Extract LLM text (the actual answer)
                         if node_type == "llm":
                             llm_text = outputs.get("text", "")
+                            # Early-return: all context already collected (memory/KB retrieved before LLM)
+                            # Don't wait for mem0-save or other post-LLM nodes (can take 30-60s)
+                            break
                         
                         # Extract Memory recall results
                         elif node_type == "tool" and "mem0" in node_data.get("title", "").lower():
@@ -945,7 +949,7 @@ async def _call_agent_with_full_rag(api_key, query, user,
             answer = result.get("answer", "").strip()
 
             # Check: LLM-Antwort leer oder zu kurz?
-            if not answer or len(answer) < 5:
+            if not answer or len(answer) < 2:
                 _audit_log("WARN", agent, f"Leere LLM-Antwort (Versuch {attempt}/{MAX_RETRIES})", query[:200])
                 if attempt < MAX_RETRIES:
                     logger.info(f"Retry {attempt}/{MAX_RETRIES} fuer Agent {agent} (leere Antwort)")

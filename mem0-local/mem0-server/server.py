@@ -82,15 +82,19 @@ MEM0_CONFIG = {
         }
     },
 
-    "graph_store": {
-        "provider": os.getenv("GRAPH_STORE_PROVIDER", "neo4j"),
+}
+
+# Conditionally add graph_store (disabled if GRAPH_STORE_PROVIDER=none or empty)
+_graph_provider = os.getenv("GRAPH_STORE_PROVIDER", "neo4j")
+if _graph_provider and _graph_provider.lower() not in ("none", "disabled", ""):
+    MEM0_CONFIG["graph_store"] = {
+        "provider": _graph_provider,
         "config": {
             "url": os.getenv("NEO4J_URI", "bolt://neo4j:7687"),
             "username": os.getenv("NEO4J_USER", "neo4j"),
             "password": os.getenv("NEO4J_PASSWORD", "22e58741703f24f1913550c9a8a51c99"),
         }
-    },
-}
+    }
 
 # ──────────────────────────────────────────
 # MEMORY INSTANCE
@@ -114,8 +118,11 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Mem0 Memory initialized successfully")
         logger.info("   Vector Store: %s @ %s", MEM0_CONFIG["vector_store"]["provider"],
                      MEM0_CONFIG["vector_store"]["config"]["url"])
-        logger.info("   Graph Store:  %s @ %s", MEM0_CONFIG["graph_store"]["provider"],
-                     MEM0_CONFIG["graph_store"]["config"]["url"])
+        if "graph_store" in MEM0_CONFIG:
+            logger.info("   Graph Store:  %s @ %s", MEM0_CONFIG["graph_store"]["provider"],
+                         MEM0_CONFIG["graph_store"]["config"]["url"])
+        else:
+            logger.info("   Graph Store:  disabled")
         logger.info("   LLM:          %s (%s)", MEM0_CONFIG["llm"]["config"]["model"],
                      MEM0_CONFIG["llm"]["provider"])
         logger.info("   Embedder:     %s (%s)", MEM0_CONFIG["embedder"]["config"]["model"],

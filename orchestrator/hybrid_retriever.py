@@ -277,6 +277,65 @@ async def _search_neo4j_cypher(query: str, top_k: int = GRAPH_TOP_K) -> List[Dic
         return []
 
 
+async def _search_mem0_graph(query: str, agent: Optional[str] = None, top_k: int = GRAPH_TOP_K) -> List[Dict[str, Any]]:
+    """Query mem0's entity graph in Neo4j.
+
+    mem0 v1.0.6 stores entities with dynamic labels (person, project, technology/*)
+    NOT the classic __Entity__ label. Query all nodes with relationships.
+    Example: denis --[works_on]--> cloud_code_team_projekt
+    """
+    try:
+        import neo4j as neo4j_mod
+        driver = neo4j_mod.GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+        # Extract keywords (strip punctuation, length > 2)
+        keywords = [w.strip(".,!?:;()[]") for w in query.split() if len(w.strip(".,!?:;()[]")) > 2][:5]
+        if not keywords:
+            driver.close()
+            return []
+
+        hits = []
+        seen_texts = set()
+        with driver.session() as session:
+            for kw in keywords[:4]:
+                # Query: match any node-relationship-node where name contains keyword
+                # Excludes HippoRAG-specific labels (Entity, Service, Database, etc.)
+                # by only matching nodes whose labels indicate mem0 dynamic types
+                result = session.run(
+                    """
+                    MATCH (n)-[r]->(m)
+                    WHERE (toLower(n.name) CONTAINS toLower($kw)
+                        OR toLower(m.name) CONTAINS toLower($kw))
+                    AND NOT 'Entity' IN labels(n)
+                    AND NOT 'Service' IN labels(n)
+                    AND NOT 'Database' IN labels(n)
+                    AND NOT 'Document' IN labels(n)
+                    AND NOT 'Bug' IN labels(n)
+                    RETURN n.name AS source, type(r) AS rel, m.name AS target
+                    LIMIT $limit
+                    """,
+                    kw=kw, limit=top_k,
+                )
+                for rec in result:
+                    text = f"{rec['source']} --[{rec['rel']}]--> {rec['target']}"
+                    if text not in seen_texts:
+                        seen_texts.add(text)
+                        hits.append({
+                            "text": text,
+                            "score": 0.65,
+                            "source": "mem0-graph",
+                            "metadata": {"keyword": kw},
+                        })
+
+        driver.close()
+        logger.info(f"Mem0 Graph: {len(hits)} entity relations for '{query[:50]}'")
+        return hits
+
+    except Exception as e:
+        logger.warning(f"Mem0 graph search failed: {e}")
+        return []
+
+
 async def _search_mem0(query: str, agent: Optional[str] = None) -> List[Dict[str, Any]]:
     """Dual-search Mem0: own (cct-{agent}) + shared (cloud-code-team)."""
     own_id = f"cct-{agent}" if agent else "unknown"
@@ -403,10 +462,11 @@ class HybridRetriever:
         include_vector: bool = True,
         include_graph: bool = True,
         include_memory: bool = True,
+        include_mem0_graph: bool = True,
         rerank: bool = True,
     ) -> List[Dict[str, Any]]:
         """
-        Run hybrid retrieval: vector + graph + memory in parallel, then rerank.
+        Run hybrid retrieval: vector + graph + memory + mem0-graph in parallel, then rerank.
 
         Returns list of dicts with keys: text, score, source, metadata
         """
@@ -422,6 +482,9 @@ class HybridRetriever:
         if include_memory:
             tasks.append(_search_mem0(query, agent))
 
+        if include_mem0_graph:
+            tasks.append(_search_mem0_graph(query, agent))
+
         # Run all searches in parallel
         all_results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -436,7 +499,7 @@ class HybridRetriever:
 
         logger.info(
             f"Hybrid retrieve: {len(merged)} total hits "
-            f"(vector={include_vector}, graph={include_graph}, memory={include_memory})"
+            f"(vector={include_vector}, graph={include_graph}, memory={include_memory}, mem0_graph={include_mem0_graph})"
         )
 
         # Deduplicate by text content
