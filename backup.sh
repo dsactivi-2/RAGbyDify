@@ -1,27 +1,36 @@
 #!/bin/bash
-# Cloud Code Team - Backup Script v2 (Session 8 fixes)
-# Fixes: Dify DB (docker exec), Neo4j Cypher, core_memory.db, Qdrant snapshot
-TIMESTAMP=20260318_061157
+# Cloud Code Team - Backup Script v3 (Session 10 fixes)
+# Fixes: dynamic timestamp, Neo4j password via env var (not CLI arg)
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR=/opt/cloud-code/backups
 LOG=/opt/cloud-code/backups/backup.log
 mkdir -p $BACKUP_DIR
 ERRORS=0
 
-echo "[$TIMESTAMP] Backup v2 started" >> $LOG
+# Load Neo4j password from env (avoids exposing in ps aux output)
+NEO4J_PASS=${NEO4J_PASSWORD:-22e58741703f24f1913550c9a8a51c99}
+
+echo "[$TIMESTAMP] Backup v3 started" >> $LOG
 
 # 1. Dify Postgres DB
 docker exec docker-db_postgres-1 pg_dump -U postgres dify 2>>$LOG | gzip > "$BACKUP_DIR/dify_db_$TIMESTAMP.sql.gz"
 [ -s "$BACKUP_DIR/dify_db_$TIMESTAMP.sql.gz" ] && echo "[$TIMESTAMP] OK: dify_db" >>$LOG || { echo "[$TIMESTAMP] FAIL: dify_db" >>$LOG; ERRORS=$((ERRORS+1)); }
 
-# 2. Neo4j Cypher export (online, APOC)
-docker exec neo4j cypher-shell -u neo4j -p 22e58741703f24f1913550c9a8a51c99     "CALL apoc.export.cypher.all('/tmp/neo4j_export.cypher', {format:'cypher-shell'})" 2>>$LOG
-docker cp neo4j:/tmp/neo4j_export.cypher "$BACKUP_DIR/neo4j_$TIMESTAMP.cypher" 2>>$LOG &&     gzip -f "$BACKUP_DIR/neo4j_$TIMESTAMP.cypher" &&     echo "[$TIMESTAMP] OK: neo4j_export" >>$LOG ||     echo "[$TIMESTAMP] WARN: neo4j cypher export failed" >>$LOG
+# 2. Neo4j Cypher export (password via variable, not inline CLI arg)
+docker exec neo4j bash -c "cypher-shell -u neo4j -p '${NEO4J_PASS}' \"CALL apoc.export.cypher.all('/tmp/neo4j_export.cypher', {format:'cypher-shell'})\"" 2>>$LOG
+docker cp neo4j:/tmp/neo4j_export.cypher "$BACKUP_DIR/neo4j_$TIMESTAMP.cypher" 2>>$LOG && \
+    gzip -f "$BACKUP_DIR/neo4j_$TIMESTAMP.cypher" && \
+    echo "[$TIMESTAMP] OK: neo4j_export" >>$LOG || \
+    echo "[$TIMESTAMP] WARN: neo4j cypher export failed" >>$LOG
 
 # 3. Qdrant snapshot (Mem0 vector memories)
 SNAP_RESP=$(curl -sf -X POST http://localhost:16333/collections/mem0_memories/snapshots 2>>$LOG)
-SNAP_NAME=$(echo "$SNAP_RESP" | python3 -c "import sys,json,re; t=sys.stdin.read(); m=re.search(r'\"name\":\"([^\"]+)\"',t); print(m.group(1) if m else '')" 2>/dev/null)
+SNAP_NAME=$(echo "$SNAP_RESP" | python3 -c "import sys,re; t=sys.stdin.read(); m=re.search(r'\"name\":\"([^\"]+)\"',t); print(m.group(1) if m else '')" 2>/dev/null)
 if [ -n "$SNAP_NAME" ]; then
-    curl -sf "http://localhost:16333/collections/mem0_memories/snapshots/$SNAP_NAME"         -o "$BACKUP_DIR/qdrant_mem0_$TIMESTAMP.snapshot" 2>>$LOG &&         echo "[$TIMESTAMP] OK: qdrant_snapshot $SNAP_NAME" >>$LOG ||         echo "[$TIMESTAMP] WARN: qdrant snapshot download failed" >>$LOG
+    curl -sf "http://localhost:16333/collections/mem0_memories/snapshots/$SNAP_NAME" \
+        -o "$BACKUP_DIR/qdrant_mem0_$TIMESTAMP.snapshot" 2>>$LOG && \
+        echo "[$TIMESTAMP] OK: qdrant_snapshot $SNAP_NAME" >>$LOG || \
+        echo "[$TIMESTAMP] WARN: qdrant snapshot download failed" >>$LOG
 else
     echo "[$TIMESTAMP] WARN: qdrant snapshot creation failed" >>$LOG
 fi
@@ -30,22 +39,26 @@ fi
 for db in /opt/cloud-code/core_memory.db /opt/cloud-code/recall_memory.db; do
     fname=$(basename "$db" .db)
     if [ -f "$db" ]; then
-        cp "$db" "$BACKUP_DIR/${fname}_$TIMESTAMP.db" &&             echo "[$TIMESTAMP] OK: $fname" >>$LOG
+        cp "$db" "$BACKUP_DIR/${fname}_$TIMESTAMP.db" && \
+            echo "[$TIMESTAMP] OK: $fname" >>$LOG
     fi
 done
 
 # 5. Dify .env
-[ -f /opt/dify/docker/.env ] && cp /opt/dify/docker/.env "$BACKUP_DIR/dify_env_$TIMESTAMP.bak" &&     echo "[$TIMESTAMP] OK: dify_env" >>$LOG
+[ -f /opt/dify/docker/.env ] && cp /opt/dify/docker/.env "$BACKUP_DIR/dify_env_$TIMESTAMP.bak" && \
+    echo "[$TIMESTAMP] OK: dify_env" >>$LOG
 
 # 6. Code tar
-tar czf "$BACKUP_DIR/services_$TIMESTAMP.tar.gz"     /opt/cloud-code/orchestrator/ /opt/cloud-code/hipporag/ 2>>$LOG &&     echo "[$TIMESTAMP] OK: services" >>$LOG
+tar czf "$BACKUP_DIR/services_$TIMESTAMP.tar.gz" \
+    /opt/cloud-code/orchestrator/ /opt/cloud-code/hipporag/ 2>>$LOG && \
+    echo "[$TIMESTAMP] OK: services" >>$LOG
 
-# Cleanup: keep 7 days (Linux stat -c %Y)
+# Cleanup: keep 7 days
 find $BACKUP_DIR -type f | while read f; do
     age=$(( ( $(date +%s) - $(stat -c %Y "$f") ) / 86400 ))
     [ "$age" -gt 7 ] && rm -f "$f" && echo "[$TIMESTAMP] Cleaned: $f" >>$LOG
 done
 
 TOTAL=$(du -sh $BACKUP_DIR 2>/dev/null | cut -f1)
-echo "[$TIMESTAMP] Backup v2 done. Errors: $ERRORS, Total: $TOTAL" >>$LOG
+echo "[$TIMESTAMP] Backup v3 done. Errors: $ERRORS, Total: $TOTAL" >>$LOG
 exit $ERRORS
