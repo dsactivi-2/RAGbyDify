@@ -56,6 +56,7 @@ VECTOR_TOP_K = int(os.getenv("VECTOR_TOP_K", "10"))
 GRAPH_TOP_K = int(os.getenv("GRAPH_TOP_K", "5"))
 RERANK_TOP_N = int(os.getenv("RERANK_TOP_N", "5"))
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
+SCORE_THRESHOLD = float(os.getenv("SCORE_THRESHOLD", "0.3"))  # Min cosine score for vector/mem0 hits (graph sources exempt)
 EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")  # NOTE: dead code — Qdrant uses bge-m3 via Ollama directly
 
 # ──────── Lazy-loaded components ────────
@@ -510,6 +511,13 @@ class HybridRetriever:
             if text and text not in seen:
                 seen.add(text)
                 unique.append(hit)
+
+        # Filter low-quality vector/memory results (graph sources pass through — they use fixed scores)
+        _vector_sources = {"qdrant-vector", "mem0-own", "mem0-shared"}
+        filtered = [h for h in unique if h.get("source", "") not in _vector_sources or h.get("score", 0) >= SCORE_THRESHOLD]
+        if len(filtered) < len(unique):
+            logger.info(f"Score threshold ({SCORE_THRESHOLD}): {len(unique) - len(filtered)} low-quality hits removed")
+        unique = filtered
 
         # Rerank
         if rerank and len(unique) > 1:
