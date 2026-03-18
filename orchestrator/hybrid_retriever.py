@@ -56,7 +56,7 @@ VECTOR_TOP_K = int(os.getenv("VECTOR_TOP_K", "10"))
 GRAPH_TOP_K = int(os.getenv("GRAPH_TOP_K", "5"))
 RERANK_TOP_N = int(os.getenv("RERANK_TOP_N", "5"))
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
-EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")  # NOTE: dead code — Qdrant uses bge-m3 via Ollama directly
 
 # ──────── Lazy-loaded components ────────
 _qdrant_client = None

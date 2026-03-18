@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any
 import httpx
 import os
 import json
+import re
 import logging
 from dotenv import load_dotenv
 load_dotenv()  # Load .env file
@@ -362,6 +363,8 @@ async def _call_agent_streaming(api_key: str, query: str, user: str,
                 except json.JSONDecodeError:
                     continue
     
+    # Strip <think>...</think> reasoning blocks (extended thinking models)
+    llm_text = re.sub(r'<think>.*?</think>', '', llm_text, flags=re.DOTALL).strip()
     return {
         "answer": llm_text,
         "conversation_id": conv_id,
@@ -980,21 +983,31 @@ async def _call_agent_with_full_rag(api_key, query, user,
     is_error = result.get("_error", False) if result else True
 
     if not is_error and answer and len(answer) > 20:
-        # auto_learn: Fakten aus der User-Query extrahieren
-        try:
-            auto_learn(user_id=user, user_message=query)
-        except Exception as al_err:
-            logger.warning(f"auto_learn failed for {agent}: {al_err}")
+        # ── T08: Fire-and-forget Memory Saves (async background, non-blocking) ──
+        # Captures current values for closure
+        _agent = agent
+        _user = user
+        _query = query
+        _answer_len = len(answer)
 
-        # Self-Learning: Agent-Antwort in EIGENEN Scope speichern (NICHT shared!)
-        # Memory-Policy: Agents schreiben NUR in cct-{agent}, NIEMALS in cloud-code-team
-        try:
-            summary = f"Agent {agent} wurde gefragt: {query[:200]}. Antwort-Laenge: {len(answer)} Zeichen."
-            from rag_middleware import save_user_memory
-            save_user_memory(f"cct-{agent}", summary)
-            logger.info(f"Self-Learning: saved to OWN scope cct-{agent}")
-        except Exception as sl_err:
-            logger.warning(f"Self-Learning failed for {agent}: {sl_err}")
+        async def _background_memory_save():
+            try:
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, lambda: auto_learn(user_id=_user, user_message=_query))
+                logger.info(f"[bg] auto_learn done for {_agent}")
+            except Exception as al_err:
+                logger.warning(f"[bg] auto_learn failed for {_agent}: {al_err}")
+            try:
+                from rag_middleware import save_user_memory
+                summary = f"Agent {_agent} wurde gefragt: {_query[:200]}. Antwort-Laenge: {_answer_len} Zeichen."
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, lambda: save_user_memory(f"cct-{_agent}", summary))
+                logger.info(f"[bg] Self-Learning saved to cct-{_agent}")
+            except Exception as sl_err:
+                logger.warning(f"[bg] Self-Learning failed for {_agent}: {sl_err}")
+
+        asyncio.create_task(_background_memory_save())
+        logger.info(f"Memory-Save scheduled as background task for {_agent}")
     else:
         logger.info(f"Memory-Save UEBERSPRUNGEN fuer {agent} (Antwort leer oder Fehler)")
 
