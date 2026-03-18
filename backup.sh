@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cloud Code Team - Backup Script v3 (Session 10 fixes)
+# Cloud Code Team - Backup Script v4 (K2 complete: no hardcoded pass, ps aux safe)
 # Fixes: dynamic timestamp, Neo4j password via env var (not CLI arg)
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR=/opt/cloud-code/backups
@@ -8,7 +8,8 @@ mkdir -p $BACKUP_DIR
 ERRORS=0
 
 # Load Neo4j password from env (avoids exposing in ps aux output)
-NEO4J_PASS=${NEO4J_PASSWORD:-22e58741703f24f1913550c9a8a51c99}
+NEO4J_PASS=${NEO4J_PASSWORD}
+[ -z "$NEO4J_PASS" ] && { echo "[ERROR] NEO4J_PASSWORD not set" >>$LOG; exit 1; }
 
 echo "[$TIMESTAMP] Backup v3 started" >> $LOG
 
@@ -17,7 +18,9 @@ docker exec docker-db_postgres-1 pg_dump -U postgres dify 2>>$LOG | gzip > "$BAC
 [ -s "$BACKUP_DIR/dify_db_$TIMESTAMP.sql.gz" ] && echo "[$TIMESTAMP] OK: dify_db" >>$LOG || { echo "[$TIMESTAMP] FAIL: dify_db" >>$LOG; ERRORS=$((ERRORS+1)); }
 
 # 2. Neo4j Cypher export (password via variable, not inline CLI arg)
-docker exec neo4j bash -c "cypher-shell -u neo4j -p '${NEO4J_PASS}' \"CALL apoc.export.cypher.all('/tmp/neo4j_export.cypher', {format:'cypher-shell'})\"" 2>>$LOG
+docker exec -e NEO4J_PASSWORD="${NEO4J_PASS}" neo4j \
+    cypher-shell -u neo4j \
+    "CALL apoc.export.cypher.all('/tmp/neo4j_export.cypher', {format:'cypher-shell'})" 2>>$LOG
 docker cp neo4j:/tmp/neo4j_export.cypher "$BACKUP_DIR/neo4j_$TIMESTAMP.cypher" 2>>$LOG && \
     gzip -f "$BACKUP_DIR/neo4j_$TIMESTAMP.cypher" && \
     echo "[$TIMESTAMP] OK: neo4j_export" >>$LOG || \

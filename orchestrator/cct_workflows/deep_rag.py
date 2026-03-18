@@ -26,8 +26,8 @@ router = APIRouter(prefix="/workflow", tags=["Workflow-DeepRAG"])
 # ══════════════════════════════════════════
 
 DIFY_API_URL = os.getenv("DIFY_API_URL", "http://localhost:3080/v1")
-DIFY_KB_ID = os.getenv("DIFY_KB_ID", "260e0d73-8c6b-49ec-92df-a369affe482b")
-DIFY_KB_KEY = os.getenv("DIFY_KB_KEY", "dataset-WG3ca69737ZxjHdi4GFHEG28")
+DIFY_KB_ID = os.getenv("DIFY_KB_ID", "")  # Set in .env — no hardcoded fallback
+DIFY_KB_KEY = os.getenv("DIFY_KB_KEY", "")  # Set in .env — no hardcoded fallback
 HIPPORAG_URL = os.getenv("HIPPORAG_URL", "http://127.0.0.1:8001")
 MEM0_API_URL = os.getenv("MEM0_LOCAL_URL", "http://localhost:8002")  # Spaeter: http://mem0:8002
 MEM0_API_KEY = os.getenv("MEM0_API_KEY", "")
